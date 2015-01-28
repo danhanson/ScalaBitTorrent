@@ -1,0 +1,4 @@
+An implementation of the BitTorrent protocol using the Scala programming language. Completed by a team of students as a project for CSSE403 at Rose-Hulman.
+
+Specification followed:
+https://wiki.theory.org/BitTorrentSpecification
