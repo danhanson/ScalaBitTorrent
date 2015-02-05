@@ -1,33 +1,60 @@
 import swing._
+import actors._
 import java.awt.image.BufferedImage
 
 object App extends SimpleSwingApplication {
 
 	val xSize = 512;
 	val ySize = 512;
-	var panel = new ImagePanel
-
 	var bound = Bound(-2.5, 2.5, -2.5, 2.5)
 
-	var points:List[Point] = List()
-
-	panel.draw( new ImageByPoints(xSize, ySize, bound, points) )
+	var panel = new ImagePanel
+	var actor = new GuiActor(xSize, ySize, bound, panel)
 
 	def top = new MainFrame {
 		title = "title"
 		preferredSize = new Dimension(xSize, ySize)
 		resizable = false
 		contents = panel
+		actor.start()
+		(new testActor(actor)).start()
 	}
 
 }
+
+class GuiActor(x:Int, y:Int, bound:Bound, panel:ImagePanel) extends Actor{
+	var points:List[Point] = List()
+
+	def act() {
+		while (true) {
+			receive {
+				case point : Point => 
+					println("received point")
+					points = point :: points
+					panel.draw(new ImageByPoints(x, y, bound, points))
+					panel.repaint()
+			}
+		}
+	}
+}
+
+class testActor(guiActor:Actor) extends Actor{
+
+	def act(){
+		Thread sleep 1000
+		guiActor ! Point(0, 0, Color(255, 255, 255))
+		Thread sleep 1000
+		guiActor ! Point(1, 1, Color(255, 255, 255))
+		Thread sleep 1000
+		guiActor ! Point(2, 2, Color(255, 255, 255))
+	}
+}
+
 
 class ImageByPoints(x:Int, y:Int, bound:Bound, points:Seq[Point]) 
 extends BufferedImage(x, y, BufferedImage.TYPE_INT_RGB){
 	val xInc = (bound.xMax - bound.xMin) / x
 	val yInc = (bound.yMax - bound.yMin) / y
-
-	//var pixels = Array.fill(x, y) { Color(255, 255, 255) }
 
 	points.filter(bound.contains).foreach( (p:Point) => {
 		val xLoc = ((p.x - bound.xMin) / xInc).toInt
