@@ -20,8 +20,11 @@ the String "subscribe": Subscribes the sender to bound updates. Whenever
 
 
 In addition, the GUI responds to keystrokes to move the viewing area:
-	arrow keys pan the view
-	I zooms in
-	O zooms out
+	arrow keys: pan the view
+	i: zoom in
+	o: zoom out
+
+	Note that when the viewing area is moved, the GUI does not redraw any
+	old points that are still in view.
 
 
