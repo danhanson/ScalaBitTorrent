@@ -61,7 +61,7 @@ Syntax overview (aka things in the syntax I think are interesting/weird)
 			equals, hashcode, toString
 		
 	Implicit parameters
-		Going to have to figure out what this is
+		automatically find parameters
 
 	Automatic Type-Dependant Closure Construction
 		use type inference to smooth over the difference between data and
@@ -69,8 +69,3 @@ Syntax overview (aka things in the syntax I think are interesting/weird)
 		talk about what it is
 		show the loop-unless example
 		pretty light
-
-	Inline XML
-
-
-
