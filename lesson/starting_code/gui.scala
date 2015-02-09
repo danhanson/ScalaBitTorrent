@@ -37,8 +37,8 @@ class GuiActor(x:Int, y:Int, bound:Bound, panel:ImagePanel) extends Actor{
 	def act() {
 		while (true) {
 			receive {
-				case points : Iterable[Point] =>
-					points.foreach(image.drawPoint)
+				case points : Iterable[Any] =>
+					points.asInstanceOf[Iterable[Point]].foreach(image.drawPoint)
 					panel.repaint
 				case point : Point => 
 					image.drawPoint(point)
@@ -83,7 +83,7 @@ extends BufferedImage(x, y, BufferedImage.TYPE_INT_RGB){
 		updateIncrements
 	}
 
-	def updateBound = {
+	def updateIncrements = {
 		xInc = (bound.xMax - bound.xMin) / x
 		yInc = (bound.yMax - bound.yMin) / y
 		drawBg
