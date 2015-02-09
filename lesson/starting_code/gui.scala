@@ -19,7 +19,7 @@ object Fractal extends SimpleSwingApplication {
 	panel.setActor(actor)
 
 	def top = new MainFrame {
-		title = "title"
+		title = "Fractal"
 		preferredSize = new Dimension(xSize, ySize)
 		resizable = false
 		contents = panel
@@ -31,6 +31,7 @@ object Fractal extends SimpleSwingApplication {
 
 class GuiActor(x:Int, y:Int, bound:Bound, panel:ImagePanel) extends Actor{
 	val image = new MutableImageByPoints(x, y, bound, Color(255, 255, 255))
+	var subscribers:List[OutputChannel[Any]] = List()
 	panel.draw(image)
 
 	def act() {
@@ -45,8 +46,17 @@ class GuiActor(x:Int, y:Int, bound:Bound, panel:ImagePanel) extends Actor{
 				case bound : Bound =>
 					image.setBound(bound)
 					panel.repaint
+					notifySubscribers
+				case "getBound" =>
+					sender ! image.getBound
+				case "subscribe" =>
+					subscribers = sender :: subscribers
 			}
 		}
+	}
+
+	private def notifySubscribers = {
+		subscribers.foreach( (x) => x ! image.getBound )
 	}
 
 	def getBound = image.getBound
@@ -57,10 +67,8 @@ extends BufferedImage(x, y, BufferedImage.TYPE_INT_RGB){
 
 	var xInc = 0.0
 	var yInc = 0.0
-	//var points:List[Point] = List()
 
-	updateBound
-
+	updateIncrements
 
 	def drawBg = {
 		for(xi <- 1 until x){
@@ -72,18 +80,13 @@ extends BufferedImage(x, y, BufferedImage.TYPE_INT_RGB){
 
 	def setBound(bound:Bound) = {
 		this.bound = bound
-		println(bound)
-		updateBound
+		updateIncrements
 	}
 
 	def updateBound = {
 		xInc = (bound.xMax - bound.xMin) / x
 		yInc = (bound.yMax - bound.yMin) / y
 		drawBg
-		//println(points.length)
-		//points = points.filter(bound.contains)
-		//println(points.length)
-		//points.foreach(drawPoint)
 	}
 
 	def drawPoint(point:Point) = {
