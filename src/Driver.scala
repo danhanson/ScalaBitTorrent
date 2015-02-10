@@ -1,11 +1,17 @@
-import scala.swing._
+import scala.io.Source
+import scala.io.Codec.ISO8859
 
-val frame = new MainFrame {
-  title = "sBitTorrent"
-//  contents = Button("Click me")(println("Button was clicked"))
-  contents = new TextArea
-  size = new Dimension(500,500)
-  centerOnScreen()
+/**
+ * Created by michaea1 on 1/31/2015.
+ */
+object Driver {
+  def main(args: Array[String]): Unit = {
+    val filename = "input/hello"
+    val chars = Source.fromFile(filename)(ISO8859)
+    val par = new Parse()
+    val result = chars.foldLeft(List.empty[String])(par)
+    println(result)
+
+  }
+
 }
-
-frame.visible = true
