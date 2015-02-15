@@ -99,6 +99,13 @@ class Metainfo(source: Source) {
                         case "private" => {
                           privateFlag = iNode.value
                         }
+                        case "length" => {
+                          fileLengths += ((null,iNode.value))
+                        }
+                        case _ => {
+                          println(sNode)
+                          println(iNode)
+                        }
                       }
                     }
                     case (sNode: StringNode, s2Node: StringNode) => {
