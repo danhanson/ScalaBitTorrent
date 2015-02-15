@@ -1,0 +1,60 @@
+Introduction
+So, what is scala trying to be?
+
+Features
+	Java - Scala runs on the JVM and is fully integrated with java.
+	
+	Type inference - Strong typing with type inference. The type
+
+	Traits - Basically more powerful interfaces, allowing multiple
+
+	Pattern matching - Case classes define bundles of data and
+
+	Higher order functions - and everything that goes with them.
+
+Syntax overview (aka things in the syntax I think are interesting/weird)
+
+Boring things (just show a syntax example)
+	Anonymous functions
+	Sequence comprehension
+	Currying
+	Automatic infix operators
+	Pattern matching
+		switch-case
+
+
+Class syntax
+	function analouge (execute body) (constructor arguments)
+	type parameters, type members
+	singleton object
+
+	case classes
+Implicit parameters
+
+Automatic Type-Dependant Closure Construction
+
+
+
+David
+  Collections
+    - Immutable
+    - Parallel
+    - Tail call stuff / Currying / Generic fp stuff
+  Actors
+    - Akka
+
+
+Dan
+Traits
+  Diamond problem / Linearization
+  Companion objects
+  Sealed (???)
+
+Adam
+Variant type parameters
+Phantom typing
+Lower/upper bounds
+Inline XML
+
+
+Explain Homework assignment / Show demo
