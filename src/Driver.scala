@@ -8,7 +8,14 @@ object Driver {
   def main(args: Array[String]): Unit = {
     val filename = "input/torrent.torrent"
     val chars = Source.fromFile(filename)(ISO8859).mkString
-    val result = Decode(chars)
-    println(result)
+    val src = Source.fromFile(filename)(ISO8859)
+    val metainfo = new Metainfo(src)
+    println(metainfo.announce)
+    println(metainfo.comment)
+    println(metainfo.announceList)
+    println(metainfo.creationDate)
+    println(metainfo.createdBy)
+    //val result = Decode(chars)
+    //println(result)
   }
 }
