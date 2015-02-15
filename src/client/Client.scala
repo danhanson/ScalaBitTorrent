@@ -1,5 +1,0 @@
-package client
-
-class Client {
-
-}
