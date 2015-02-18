@@ -1,79 +1,56 @@
 import java.io.File
-import java.net.{URLConnection, URL}
-import java.security.MessageDigest
+import java.math.BigInteger
+import java.net.{URL, URLConnection}
+import java.security.SecureRandom
 
-import akka.io.IO
-import akka.remote.transport.netty.NettyTransportSettings.Udp
-import spray.client.pipelining._
-import spray.http.HttpRequest
-import sun.net.www.content.text.PlainTextInputStream
+import akka.actor.{Props, ActorSystem}
 import org.apache.commons.io.IOUtils
+import sun.net.www.content.text.PlainTextInputStream
 
 import scala.io.Codec.ISO8859
 import scala.io.Source
 import scala.swing.FileChooser
-import scala.util.Random
 
 object Driver {
   def main(args: Array[String]): Unit = {
+    val system = ActorSystem("sbittorrent")
     val fileChooser = new FileChooser(new File("input"))
     fileChooser.showOpenDialog(null)
     val filename = fileChooser.selectedFile
-    val chars = Source.fromFile(filename)(ISO8859).mkString
     val src = Source.fromFile(filename)(ISO8859)
     val metainfo = new Metainfo(src)
-    println(metainfo.announce)
-    println(metainfo.comment)
-    println(metainfo.announceList)
-    println(metainfo.creationDate)
-    println(metainfo.createdBy)
-    println("Piece Length: " + metainfo.pieceLength)
-    println("Private Flag: " + metainfo.privateFlag)
-    println("Name: " + metainfo.name)
-    println("File Lengths: " + metainfo.fileLengths)
-    //println("Infodic " + metainfo.infodic)
-    println("Infohash " + metainfo.infohash)
+    //println(metainfo)
+    //experimentingWithTracker(metainfo)
+    val client = system.actorOf(Props(new ClientActor(metainfo)), name="client")
 
-    var encodedInfoHash = java.net.URLEncoder.encode(metainfo.infohash)
-    println(encodedInfoHash)
-    var peer_id = new Array[Byte](20)
-    println(peer_id.mkString)
-    new Random().nextBytes(peer_id)
-    println(peer_id.mkString)
-    var encoded_peer_id = MessageDigest.getInstance("SHA-1").digest(peer_id).toString
-    encoded_peer_id = java.net.URLEncoder.encode(encoded_peer_id)
-    println("Peer_id: "+encoded_peer_id)
-    var event="started"
-    var port = 6881
-    var uploaded = "0"
-    var downloaded = "0"
-    var left = metainfo.fileLengths.values.sum
-    var compact = "1"
-    var trackerURL = metainfo.announce+"?event="+event+"&info_hash="+encodedInfoHash+"&peer_id="+encoded_peer_id+"&port="+port.toString+"&uploaded="+uploaded+"&downloaded="+downloaded+"&left="+left+"&compact="+compact+"&no_peer_id=0"
-    val conn: URLConnection = new URL(trackerURL.replace("udp","http")).openConnection
-    val what: AnyRef = conn.getContent
-    println(conn)
-    println(what)
-    what match {
+  }
+
+  def experimentingWithTracker(metainfo: Metainfo): Unit = {
+    val encodedInfoHash: String = URLUtil.toURLString(metainfo.infohash)
+    val random = new SecureRandom
+    val peer_id = new BigInteger(100, random).toString(32)
+    val event = "started"
+    val port = 6881
+    val uploaded = "0"
+    val downloaded = "0"
+    val left = metainfo.fileLengths.values.sum
+    val compact = "1"
+    val trackerURL = metainfo.announce + "?event=" + event + "&info_hash=" + encodedInfoHash + "&peer_id=" + peer_id + "&port=" + port.toString + "&uploaded=" + uploaded + "&downloaded=" + downloaded + "&left=" + left + "&compact=" + compact + "&no_peer_id=0"
+    contactTracker(new URL(trackerURL))
+  }
+
+  def contactTracker(url: URL): Unit = {
+    println("Attempting to connect to: "+url.toString)
+    val connect: URLConnection = url.openConnection
+    val response = connect.getContent
+    response match {
       case text: PlainTextInputStream => {
-        var content = IOUtils.toString(text,"UTF-8")
+        val content = IOUtils.toString(text, "UTF-8")
         println(content)
+        val parsed = Decode.readDict(content.tail)
+        println(parsed)
       }
     }
-    var res: HttpRequest = Get(trackerURL)
-    IO(Udp) ! Udp.SimpleSenderReady =>
-      context.become(ready(sender()))
-
-    //new Tracker(metainfo,trackerURL).sendRequest
-
-    //implicit val system = ActorSystem("simple-spray-client")
-    //val log = Logging(system, getClass)
-    //log.info("Requesting stuff")
-    //println(trackerURL)
-
-
-
-    //val result = Decode(chars)
-    //println(result)
   }
+
 }

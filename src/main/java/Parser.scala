@@ -27,14 +27,14 @@ object Decode extends (String => List[BNode]) {
       throw new Exception("Well shit")
   }
 
-  def readString(input: String): (BNode,String) = {
+  def readString(input: String): (StringNode,String) = {
     val partitions = input.split(":")
     val len = partitions.head.toInt
     val tuple = partitions.tail.mkString(":").splitAt(len)
     (new StringNode(tuple._1),tuple._2)
   }
 
-  def readList(input: String): (BNode,String) = {
+  def readList(input: String): (ListNode,String) = {
     var remaining = input
     val result = new ListBuffer[BNode]
     while (!remaining.head.equals('e')) {
@@ -45,20 +45,20 @@ object Decode extends (String => List[BNode]) {
     (new ListNode(result.toList), remaining.tail)
   }
 
-  def readInteger(input: String): (BNode,String) = {
+  def readInteger(input: String): (IntNode,String) = {
     val partitions = input.splitAt(input.indexOf("e"))
     val value = partitions._1.toInt
     val tail = partitions._2.tail
     (new IntNode(value), tail)
   }
 
-  def readDict(input: String): (BNode,String) = {
+  def readDict(input: String): (DictNode,String) = {
     var remaining = input
-    val result = new mutable.HashMap[BNode,BNode]
+    val result = new mutable.HashMap[String,BNode]
     while (!remaining.head.equals('e')) {
       val output1 = readOne(remaining)
       val output2 = readOne(output1._2)
-      result.put(output1._1,output2._1)
+      result.put(output1._1.asInstanceOf[StringNode].value,output2._1)
       remaining = output2._2
     }
     (new DictNode(result,'d'+input.substring(0,input.length-remaining.length)+'e'), remaining.tail)

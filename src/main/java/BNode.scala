@@ -14,7 +14,7 @@ class ListNode(val value:List[BNode]) extends BNode {
   }
 }
 
-class DictNode(val value:mutable.Map[BNode,BNode],val encoded:String) extends BNode {
+class DictNode(val value:mutable.Map[String,BNode],val encoded:String) extends BNode {
   override def toString(): String = {
     "DictNode["+value.toString+"]"
   }
