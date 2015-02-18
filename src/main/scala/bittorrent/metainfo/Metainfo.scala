@@ -1,73 +1,13 @@
 package bittorrent.metainfo
 
+import java.security.MessageDigest
 import java.util.Date
 
 import scala.collection.mutable.MutableList
 import scala.collection.mutable
 import scala.io.Source
 
-import java.security.MessageDigest
 import bittorrent.parser._
-
-object Metainfo {
-	
-	class File {
-		val pieceLength : Int
-		val pieces : Seq[String]
-		val isPrivate : Boolean
-	}
-
-	object FileMode {
-		case object SingleFileMode extends FileMode	
-		case object MultipleFilesMode extends FileMode
-	}
-
-	sealed abstract trait FileMode
-
-	object Info {
-		class SingleFileInfo extends File with Info {
-			override val fileMode = FileMode.SingleFileMode
-			val name: String
-			val length: Long
-			val md5sum: String
-		}
-
-		class MultipleFilesInfo extends Info {
-			override val fileMode = FileMode.MultipleFilesMode
-			val name: String
-			val files: Seq[File]
-		}
-	}
-
-	sealed trait Info {
-		val pieceLength: Long
-		val pieces: Seq[String]
-		val isPrivate: Boolean
-		val files: Seq[File]
-		val fileMode: FileMode
-	}
-
-	val sha1Encoder = MessageDigest.getInstance("SHA-1")
-
-	private def makeInfoHash(string: String): String = {
-		sha1Encoder.digest(string.getBytes("UTF-8")).toString()
-	}
-
-	private def stringOrEmpty(option: Option[BNode]): String = {
-	  if(option.isEmpty)
-	    ""
-	  else
-	    option.get.value.asInstanceOf[String]
-	}
-
-	private def dateOrNull(option: Option[BNode]): Date = {
-	  if(option.isEmpty)
-	 	  null
-	  else
-	 	  new Date(option.get.value.asInstanceOf[Int])
-	}
-	
-}
 
 class Metainfo(source: Source) {
   val bnodes : List[BNode] = Decode(source.mkString)
@@ -80,14 +20,15 @@ class Metainfo(source: Source) {
   var pieceLength : Int = -1
   var privateFlag : Int = -1
   var name : String = null
-  var pieces : String = null
+  var piecesArray : Array[Byte] = null
+  var infodic : String = null
 
   bnodes.head match {
     case dnode: DictNode => {
-      for ((k,v) <- dnode.value) {
-        (k,v) match {
-          case (kstring:String,vstring:StringNode) => {
-            kstring match {
+      for ((k: String,v) <- dnode.value) {
+        v match {
+          case vstring:StringNode => {
+            k match {
               case "announce" => {
                 announce = vstring.value
               }
@@ -100,16 +41,16 @@ class Metainfo(source: Source) {
               case _ => { }
             }
           }
-          case (kstring:StringNode,vint:IntNode) => {
-            kstring.value match {
+          case vint:IntNode => {
+            k match {
               case "creation date" => {
                 creationDate = new Date(vint.value)
               }
               case _ => { }
             }
           }
-          case (kstring:StringNode,vlist:ListNode) => {
-            kstring.value match {
+          case vlist:ListNode => {
+            k match {
               case "announce-list" => {
                 for (e <- vlist.value) {
                   e match {
@@ -127,12 +68,13 @@ class Metainfo(source: Source) {
               case _ => { }
             }
           }
-          case (kstring:StringNode, vDic:DictNode) => {
-            kstring.value match {
+          case vDic:DictNode => {
+            k match {
               case "info" => {
+                infodic = vDic.encoded
                 for ((key,value) <- vDic.value) {
-                  (key, value) match {
-                    case (sNode: StringNode, lNode: ListNode) => {
+                  value match {
+                    case lNode: ListNode => {
                       for(e <- lNode.value) {
                         e match {
                           case dic: DictNode => {
@@ -156,8 +98,8 @@ class Metainfo(source: Source) {
                         }
                       }
                     }
-                    case (sNode: StringNode, iNode: IntNode) => {
-                      sNode.value match {
+                    case iNode: IntNode => {
+                      key match {
                         case "piece length" => {
                           pieceLength = iNode.value
                         }
@@ -168,18 +110,18 @@ class Metainfo(source: Source) {
                           fileLengths += ((null,iNode.value))
                         }
                         case _ => {
-                          println(sNode)
+                          println(key)
                           println(iNode)
                         }
                       }
                     }
-                    case (sNode: StringNode, s2Node: StringNode) => {
-                      sNode.value match {
+                    case s2Node: StringNode => {
+                      key match {
                         case "name" => {
                           name = s2Node.value
                         }
                         case "pieces" => {
-                          pieces = s2Node.value
+                          piecesArray = s2Node.value.getBytes("ISO-8859-1")
                         }
                       }
                     }
@@ -195,5 +137,22 @@ class Metainfo(source: Source) {
     case _ => { }
   }
 
+  val infohash: Array[Byte] = MessageDigest.getInstance("SHA-1").digest(infodic.getBytes("ISO-8859-1"))
+  val pieces: Array[Array[Byte]] = new Array[Array[Byte]](piecesArray.length/20)
+  for (i <- 0 to piecesArray.length / 20 - 1) {
+    pieces(i) = piecesArray.slice(20*i,20*(i+1))
+  }
 
+  override def toString: String = {
+    return "Announcde: "+announce+
+    "\nComment: "+comment+
+    "\nAnnounce List: "+announceList+
+    "\nCreation Date: "+creationDate+
+    "\nCreated By: "+createdBy+
+    "\nPiece Length: " + pieceLength+
+    "\nPrivate Flag: " + privateFlag+
+    "\nName: " + name+
+    "\nFile Lengths: " + fileLengths+
+    "\nInfohash " + infohash
+  }
 }
