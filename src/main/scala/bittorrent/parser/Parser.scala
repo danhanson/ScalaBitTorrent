@@ -56,7 +56,7 @@ object Decode extends (String => List[BNode]) {
 
   def readDict(input: String): (DictNode,String) = {
     var remaining = input
-    val result = new mutable.HashMap[BNode,BNode]
+    val result = new mutable.HashMap[String,BNode]
     while (!remaining.head.equals('e')) {
       val output1 = readString(remaining)
       val output2 = readOne(output1._2)
