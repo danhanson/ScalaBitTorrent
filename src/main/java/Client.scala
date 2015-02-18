@@ -36,13 +36,13 @@ class ClientActor(val metainfo: Metainfo) extends Actor {
 				println("Incomplete: "+incomplete)
 				println("Interval: "+interval)
 				parsed.value.get("peers").get match {
-					case peers:DictNode => {
-						// not sure
+					case peers:ListNode => {
+						// list of dictionaries, could be empty
 					}
 					case peers:StringNode => {
 						// 6 bytes per peer
 						// 4 bytes IP | 2 bytes port
-						val byteArray = peers.value.getBytes
+						val byteArray = peers.value.getBytes("ISO-8859-1")
 						println("byteArray.length = "+byteArray.length)
 						for (i <- 0 to byteArray.length / 6 - 1) {
 							var ipBytes = byteArray.slice(6*i,6*i+4)
@@ -71,6 +71,7 @@ class ClientActor(val metainfo: Metainfo) extends Actor {
 						"&downloaded="+downloaded+
 						"&left="+left+
 						"&compact="+compact+
+						"&numwant=4"+
 						"&no_peer_id="+no_peer_id)
 	}
 
