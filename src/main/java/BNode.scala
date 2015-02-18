@@ -1,6 +1,5 @@
-/**
- * Created by michaea1 on 2/13/2015.
- */
+import scala.collection.mutable
+
 trait BNode
 
 class StringNode(val value:String) extends BNode {
@@ -15,7 +14,7 @@ class ListNode(val value:List[BNode]) extends BNode {
   }
 }
 
-class DictNode(val value:Map[BNode,BNode]) extends BNode {
+class DictNode(val value:mutable.Map[BNode,BNode],val encoded:String) extends BNode {
   override def toString(): String = {
     "DictNode["+value.toString+"]"
   }

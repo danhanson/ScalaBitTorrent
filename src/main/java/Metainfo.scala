@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import java.util.Date
 
 import scala.collection.mutable.MutableList
@@ -16,6 +17,7 @@ class Metainfo(source: Source) {
   var privateFlag : Int = -1
   var name : String = null
   var pieces : String = null
+  var infodic : String = null
 
   bnodes.head match {
     case dnode: DictNode => {
@@ -65,6 +67,7 @@ class Metainfo(source: Source) {
           case (kstring:StringNode, vDic:DictNode) => {
             kstring.value match {
               case "info" => {
+                infodic = vDic.encoded
                 for ((key,value) <- vDic.value) {
                   (key, value) match {
                     case (sNode: StringNode, lNode: ListNode) => {
@@ -129,5 +132,7 @@ class Metainfo(source: Source) {
     }
     case _ => { }
   }
+
+  val infohash = MessageDigest.getInstance("SHA-1").digest(infodic.getBytes("UTF-8")).toString
 
 }

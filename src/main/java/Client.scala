@@ -1,20 +1,5 @@
-package bittorrent.client
 
-import akka.actor.Actor
-import akka.actor.ActorRef
-import akka.io.IO
-import akka.actor.ActorSystem
-
-import spray.can.Http
-import spray.http.HttpResponse
-import spray.http.StatusCodes
-
-import scala.util.Random
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.Map
-
-import bittorrent.metainfo.Metainfo
-
+/*
 object Client {
 	implicit val system: ActorSystem = ActorSystem()
 	val internet : ActorRef = IO(Http)
@@ -36,6 +21,7 @@ class Client(val port: Int = 6881) extends Actor {
 
 	def torrent(meta: Metainfo): Unit = {
 		val handler = new TorrentFileHandler(meta)(this)
-		files.put(meta.info.name,handler)
+		//files.put(meta.info.name,handler)
 	}
 }
+*/

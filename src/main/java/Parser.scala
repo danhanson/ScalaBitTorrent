@@ -61,6 +61,6 @@ object Decode extends (String => List[BNode]) {
       result.put(output1._1,output2._1)
       remaining = output2._2
     }
-    (new DictNode(result.toMap), remaining.tail)
+    (new DictNode(result,'d'+input.substring(0,input.length-remaining.length)+'e'), remaining.tail)
   }
 }
