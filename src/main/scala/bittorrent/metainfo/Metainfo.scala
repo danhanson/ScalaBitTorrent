@@ -86,8 +86,8 @@ class Metainfo(source: Source) {
     case dnode: DictNode => {
       for ((k,v) <- dnode.value) {
         (k,v) match {
-          case (kstring:StringNode,vstring:StringNode) => {
-            kstring.value match {
+          case (kstring:String,vstring:StringNode) => {
+            kstring match {
               case "announce" => {
                 announce = vstring.value
               }
