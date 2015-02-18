@@ -89,7 +89,13 @@ class Metainfo(source: Source) {
                                   }
                                 }
                               }
+                              case _ => {
+                                println("Something else weird happened. Whatever.")
+                              }
                             }
+                          }
+                          case _ => {
+                            println("something weird happened, carry on")
                           }
                         }
                       }

@@ -1,28 +1,27 @@
-import java.io.File
 import java.math.BigInteger
 import java.net.{URL, URLConnection}
 import java.security.SecureRandom
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorRef, Props, ActorSystem}
 import org.apache.commons.io.IOUtils
 import sun.net.www.content.text.PlainTextInputStream
 
-import scala.io.Codec.ISO8859
-import scala.io.Source
-import scala.swing.FileChooser
-
 object Driver {
   def main(args: Array[String]): Unit = {
-    val system = ActorSystem("sbittorrent")
-    val fileChooser = new FileChooser(new File("input"))
-    fileChooser.showOpenDialog(null)
-    val filename = fileChooser.selectedFile
-    val src = Source.fromFile(filename)(ISO8859)
-    val metainfo = new Metainfo(src)
+    implicit val system = ActorSystem("sbittorrent")
+    //val fileChooser = new FileChooser(new File("input"))
+    //fileChooser.showOpenDialog(null)
+    //val filename = fileChooser.selectedFile
+    //val src = Source.fromFile(filename)(ISO8859)
+    //val metainfo = new Metainfo(src)
     //println(metainfo)
     //experimentingWithTracker(metainfo)
-    val client = system.actorOf(Props(new ClientActor(metainfo)), name="client")
+    //val client = system.actorOf(Props(new ClientActor(metainfo)), name="client")
 
+    val client = system.actorOf(Props[FileManager],name="filemanager")
+    val gui: ActorRef = system.actorOf(Props(new GUI(client)),name="gui")
+
+    gui ! "start"
   }
 
   def experimentingWithTracker(metainfo: Metainfo): Unit = {

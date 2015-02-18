@@ -1,62 +1,82 @@
 import java.math.BigInteger
-import java.net.{InetAddress, URL, URLConnection}
+import java.net.{InetAddress, URL}
 import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.security.SecureRandom
-import java.util
 
 import akka.actor.Actor
 import org.apache.commons.io.IOUtils
+import spray.client.pipelining._
+import spray.http.Uri.ParsingMode
+import spray.http.{HttpRequest, HttpResponse, Uri}
 import sun.net.www.content.text.PlainTextInputStream
 
-class ClientActor(val metainfo: Metainfo) extends Actor {
-	var event = "started"
-	val port = 6881
-	var uploaded = 0
-	var downloaded = 0
-	var left = metainfo.fileLengths.values.sum
-	val compact = 1
-	val no_peer_id = 0
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
+
+class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
+	var event: String = "started"
+	val port: Int = 6881
+	var uploaded: Int = 0
+	var downloaded: Int = 0
+	var left: Int = metainfo.fileLengths.values.sum
+	val compact: Int = 1
+	val no_peer_id: Int = 0
 	val encodedInfoHash: String = URLUtil.toURLString(metainfo.infohash)
 	val random = new SecureRandom
-	val peer_id = new BigInteger(100, random).toString(32)
-	communicate
+	val peer_id: String = new BigInteger(100, random).toString(32)
+	var peer_list: List[(InetAddress, Int)] = List.empty[(InetAddress,Int)]		// (ip,port)
+	var interval: Int = 0
+	contactTracker
 
-	private def communicate(): Int = {
-		val connect: URLConnection = createURL.openConnection
-		val response = connect.getContent
-		response match {
-			case text: PlainTextInputStream => {
-				val content = IOUtils.toString(text, "ISO-8859-1")
-				println(content)
-				val parsed = Decode.readDict(content.tail)._1
-				val interval = parsed.value.get("interval").get.asInstanceOf[IntNode].value
-				val complete = parsed.value.get("complete").get.asInstanceOf[IntNode].value
-				val incomplete = parsed.value.get("incomplete").get.asInstanceOf[IntNode].value
-				println("Complete: "+complete)
-				println("Incomplete: "+incomplete)
-				println("Interval: "+interval)
-				parsed.value.get("peers").get match {
-					case peers:ListNode => {
-						// list of dictionaries, could be empty
-					}
-					case peers:StringNode => {
-						// 6 bytes per peer
-						// 4 bytes IP | 2 bytes port
-						val byteArray = peers.value.getBytes("ISO-8859-1")
-						println("byteArray.length = "+byteArray.length)
-						for (i <- 0 to byteArray.length / 6 - 1) {
-							var ipBytes = byteArray.slice(6*i,6*i+4)
-							var portBytes = byteArray.slice(6*i+4,6*i+6)
-							println("ipBytes: "+util.Arrays.toString(ipBytes))
-							println("portBytes: "+util.Arrays.toString(portBytes))
-							var address = InetAddress.getByAddress(ipBytes)
-							var port: Short = ByteBuffer.wrap(portBytes).getShort
-							println("Address: "+address)
-							println("Port: "+port)
+	private def contactTracker(): Unit = {
+		val uri = Uri(createURL.toString, Charset.forName("ISO-8859-1"), ParsingMode.RelaxedWithRawQuery)
+		val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
+		pipeline(Get(uri)) onComplete {
+			case Success(response: HttpResponse) => {
+				response.entity.asString match {
+					case text: PlainTextInputStream => {
+						val content = IOUtils.toString(text, "ISO-8859-1")
+						println(content)
+						val parsed = Decode.readDict(content.tail)._1
+						val interval = parsed.value.get("interval").get.asInstanceOf[IntNode].value
+						val complete = parsed.value.get("complete").get.asInstanceOf[IntNode].value
+						val incomplete = parsed.value.get("incomplete").get.asInstanceOf[IntNode].value
+						val peerList: ListBuffer[(InetAddress, Int)] = new ListBuffer[(InetAddress,Int)]
+						parsed.value.get("peers").get match {
+							case peers:ListNode => {
+								// list of dictionaries, could be empty
+								for (dict: BNode <- peers.value) {
+									val peerMap = dict.asInstanceOf[DictNode].value
+									val port = peerMap.get("port").get.asInstanceOf[IntNode].value
+									val ipString: String = peerMap.get("ip").get.asInstanceOf[StringNode].value
+									val address = InetAddress.getByName(ipString)
+									peerList += ((address,port))
+								}
+								println("GOT HERE")
+							}
+							case peers:StringNode => {
+								// 6 bytes per peer
+								// 4 bytes IP | 2 bytes port
+								val byteArray = peers.value.getBytes("ISO-8859-1")
+								for (i <- 0 to byteArray.length / 6 - 1) {
+									val ipBytes = byteArray.slice(6 * i, 6 * i + 4)
+									val portBytes = byteArray.slice(6 * i + 4, 6 * i + 6)
+									val address: InetAddress = InetAddress.getByAddress(ipBytes)
+									val port: Int = ByteBuffer.wrap(portBytes).getShort.toInt
+									peerList += ((address,port))
+								}
+							}
 						}
+						println("Peers are: " + peerList.toList)
 					}
 				}
-				0
+			}
+			case Failure(response: HttpResponse) => {
+				println("Tracker communication failed:")
+				println(response)
 			}
 		}
 	}
@@ -71,11 +91,15 @@ class ClientActor(val metainfo: Metainfo) extends Actor {
 						"&downloaded="+downloaded+
 						"&left="+left+
 						"&compact="+compact+
-						"&numwant=4"+
 						"&no_peer_id="+no_peer_id)
 	}
 
 	override def receive: Receive = {
-		null
+		case "contact" => {
+			contactTracker
+		}
+		case x => {
+			println("Client received unknown message "+x)
+		}
 	}
 }
