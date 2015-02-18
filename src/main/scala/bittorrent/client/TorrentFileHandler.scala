@@ -1,6 +1,7 @@
 package bittorrent.client
 
 import akka.actor.Actor
+import akka.actor.ActorRef
 
 import bittorrent.metainfo.Metainfo
 
@@ -16,31 +17,29 @@ import akka.pattern.ask
 
 import akka.io.IO
 
-class TorrentFileHandler(meta: Metainfo)(implicit client: Client) extends Actor {
-	import context.dispatcher
+class TorrentFileHandler(meta: Metainfo)(implicit client: Client){
+	import scala.concurrent.ExecutionContext.Implicits.global
+	import Client._
+	implicit val timeout: Timeout = Timeout(2000)
+	implicit val handler = this;
 	def port: Int = client.port
 	def peerID : String = client.peerID
 	def uploaded : Long = 0
 	def downloaded : Long = 0
 	def state : Event = Started
-	implicit val timeout: Timeout = Timeout(2000)
-	implicit val handler = this;
-	implicit val system = Client.system
+	val tracker: ActorRef = new Tracker(meta.announce).self
 	
-	private val res: Future[HttpResponse] = (Client.internet ? TrackerRequest(meta)).mapTo[HttpResponse]
+	private val res: Future[TrackerResponse] =
+		(tracker ? new TrackerRequest(meta)).mapTo[TrackerResponse]
 
-	res.onComplete { x =>
-		
-	}
-
-	def receive(res: Try[HttpResponse]): Unit = {
-		if(res.isSuccess)
-			this.handleResponse(res.get)
+	res.onComplete {
+		x => if(x.isSuccess)
+			handleResponse(x.get)
 		else
-			handleError
+			handleError()
 	}
 
-	def handleResponse(response: HttpResponse): Unit = {
+	def handleResponse(response: TrackerResponse): Unit = {
 		
 	}
 

@@ -1,7 +1,11 @@
 /**
  * Created by michaea1 on 2/13/2015.
  */
-trait BNode
+package bittorrent.parser
+
+trait BNode {
+	val value : Any
+}
 
 class StringNode(val value:String) extends BNode {
   override def toString: String = {
@@ -15,7 +19,7 @@ class ListNode(val value:List[BNode]) extends BNode {
   }
 }
 
-class DictNode(val value:Map[BNode,BNode]) extends BNode {
+class DictNode(val value:Map[String,BNode]) extends BNode {
   override def toString(): String = {
     "DictNode["+value.toString+"]"
   }

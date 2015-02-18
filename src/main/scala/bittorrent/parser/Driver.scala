@@ -1,7 +1,11 @@
+package bittorrent.parser
+
 import scala.io.Source
 import scala.io.Codec.ISO8859
 import scala.swing.FileChooser
 import java.io.File
+import bittorrent.metainfo._
+import bittorrent.client.Client
 
 /**
  * Created by michaea1 on 2/13/2015.
@@ -23,7 +27,9 @@ object Driver {
     println("Private Flag: " + metainfo.privateFlag)
     println("Name: " + metainfo.name)
     println("File Lengths: " + metainfo.fileLengths)
-    //val result = Decode(chars)
-    //println(result)
+    val client = new Client()
+    if(metainfo != null){
+    	client.torrent(metainfo);
+    }
   }
 }

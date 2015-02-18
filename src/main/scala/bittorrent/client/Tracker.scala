@@ -24,7 +24,14 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 	override def receive = {
 		case req: TrackerRequest =>
 			val future : Future[HttpResponse] = (internet ? req.toHttpRequest(id)).mapTo[HttpResponse]
-			future.onComplete { x => sender ! new TrackerResponse(x.get) }
+			future.onComplete {
+				x =>
+					val res: TrackerResponse = new TrackerResponse(x.get)
+					if(res.trackerID != null){
+						id = res.trackerID
+					}
+					sender ! new TrackerResponse(x.get)
+			}
 		case _ => throw new Exception("WHAT THE HELL IS THAT?")
 	}
 }
