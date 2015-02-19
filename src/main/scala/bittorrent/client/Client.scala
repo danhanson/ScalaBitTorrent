@@ -21,21 +21,16 @@ object Client {
 	val clientID = "-3d0000-"
 }
 
-class Client(val port: Int = 6881) extends Actor {
+class Client(val port: Int = 6881) {
 
 	import Client._
 
 	val files = new HashMap[String,TorrentFileHandler]
 
-	val peerID = clientID + (0 to 12 map (x => Random.nextInt(10))).mkString
-
-	override def receive = {
-		case res: HttpResponse => 
-		case _ => println("receive")
-	}
+	val peerID = clientID + (0 to 11 map (x => Random.nextInt(10))).mkString
 
 	def torrent(meta: Metainfo): Unit = {
 		val handler = new TorrentFileHandler(meta)(this)
-		files.put(meta.name,handler)
+		files.put(meta.infohash,handler)
 	}
 }

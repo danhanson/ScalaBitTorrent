@@ -2,6 +2,7 @@ package bittorrent.client
 
 import akka.actor.Actor
 import akka.actor.ActorRef
+import akka.actor.Props
 
 import bittorrent.metainfo.Metainfo
 
@@ -15,19 +16,29 @@ import akka.util.Timeout
 import akka.actor.Actor
 import akka.pattern.ask
 
+import bittorrent.tracker._
+import bittorrent.peer._
+
 import akka.io.IO
 
 class TorrentFileHandler(meta: Metainfo)(implicit client: Client){
 	import scala.concurrent.ExecutionContext.Implicits.global
 	import Client._
+
 	implicit val timeout: Timeout = Timeout(2000)
-	implicit val handler = this;
+	private implicit val handler = this;
+
+
+	private var trackerID : Option[String] = None
+
 	def port: Int = client.port
 	def peerID : String = client.peerID
 	def uploaded : Long = 0
 	def downloaded : Long = 0
+	def left : Long = meta.fileLengths.values.sum
 	def state : Event = Started
-	val tracker: ActorRef = new Tracker(meta.announce).self
+	def compact : Int = 1
+	val tracker: ActorRef = system.actorOf(Props(new Tracker(meta.announce)))
 	
 	private val res: Future[TrackerResponse] =
 		(tracker ? new TrackerRequest(meta)).mapTo[TrackerResponse]
@@ -36,15 +47,23 @@ class TorrentFileHandler(meta: Metainfo)(implicit client: Client){
 		x => if(x.isSuccess)
 			handleResponse(x.get)
 		else
-			handleError()
+			handleError(x)
 	}
 
-	def handleResponse(response: TrackerResponse): Unit = {
+	private def handleResponse(response: TrackerResponse): Unit = {
 		
 	}
 
-	def handleError(): Unit = {
+	private def handleError(t : Try[TrackerResponse]): Unit = {
 		throw new Exception("THE TORRENT BROKE")
+	}
+
+	private def hasTrackerId: Boolean = {
+		trackerID.isDefined
+	}
+
+	private def trackerId: String = {
+		trackerID.get
 	}
 }
 

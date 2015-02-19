@@ -30,7 +30,7 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 					if(res.trackerID != null){
 						id = res.trackerID
 					}
-					sender ! new TrackerResponse(x.get)
+					sender ! res
 			}
 		case _ => throw new Exception("WHAT THE HELL IS THAT?")
 	}
