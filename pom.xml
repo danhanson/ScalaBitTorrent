@@ -5,7 +5,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <inceptionYear>2008</inceptionYear>
     <properties>
-        <scala.version>2.11</scala.version>
+        <scala.version>2.10</scala.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -29,7 +29,7 @@
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
-            <version>${scala.version}.5</version>
+            <version>${scala.version}.4</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
