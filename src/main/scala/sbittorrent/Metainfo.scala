@@ -6,7 +6,7 @@ import scala.collection.mutable.MutableList
 import scala.collection.mutable
 import scala.io.Source
 
-class Metainfo(source: Source) {
+class Metainfo(val source: Source) {
   val bnodes : List[BNode] = Decode(source.mkString)
   var announce : String = null
   var comment : String = null

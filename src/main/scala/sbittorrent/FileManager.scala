@@ -13,9 +13,8 @@ class FileManager extends Actor {
   val trackerCommunicators = new ListBuffer[ActorRef]
   override def receive: Receive = {
     case file:File => {
-      println("FileManager received a file")
       val src = Source.fromFile(file)(ISO8859)
-      val metainfo = new Metainfo(src)
+      val metainfo = new HTTPOnlyMetainfo(src)
       var tracker: ActorRef = context.actorOf(Props(
         new TrackerCommunicator(metainfo)),
         name="trackercommunicator"+trackerCounter)

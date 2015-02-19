@@ -31,7 +31,6 @@ class GUI(filemanager:ActorRef) extends SimpleSwingApplication with Actor {
         val fileChooser = new FileChooser(new File("input"))
         fileChooser.showOpenDialog(null)
         val file: File = fileChooser.selectedFile
-        println("File is "+file)
         if (file != null) {   // closing the filechooser gives a null file
           filemanager ! file
         }

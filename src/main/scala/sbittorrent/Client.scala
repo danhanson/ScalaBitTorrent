@@ -5,6 +5,8 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
+import akka.util.ByteString
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import akka.actor.{Actor, ActorRef}
@@ -34,13 +36,13 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 	var interval: Int = 0
 	var complete: Int = 0
 	var incomplete: Int = 0
-	//IO(Udp) ! Udp.Bind(self, new InetSocketAddress("localhost", 0))
+	var connectionId:Long = 0x0000041727101980L
+
 	contactTracker
 
 
 
 	private def contactTracker(): Unit = {
-		println("CONTACTING TRACKER")
 		if (metainfo.announce.toString.startsWith("udp")) {
 			contactUDPTracker
 		} else if (metainfo.announce.startsWith("http")) {
@@ -56,7 +58,6 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 		pipeline(Get(uri)) onComplete {
 			case Success(response: HttpResponse) => {
 				val content = response.entity.asString(HttpCharsets.`ISO-8859-1`)
-				println(content)
 				val parsed = Decode.readDict(content.tail)._1
 				interval = parsed.value.get("interval").get.asInstanceOf[IntNode].value
 				context.system.scheduler.scheduleOnce(Duration.create(interval,TimeUnit.SECONDS))(contactTracker)
@@ -98,7 +99,8 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 
 	private def contactUDPTracker(): Unit = {
 		import context.system
-		val remote = InetSocketAddress.createUnresolved("open.demonii.com", 1337)
+		//val remote = new InetSocketAddress("open.demonii.com",1337)
+		val remote = new InetSocketAddress("tracker.openbittorrent.com",80)
 		IO(UdpConnected) ! UdpConnected.Connect(self,remote)
 	}
 
@@ -131,6 +133,14 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 		case UdpConnected.Received => {
 			println("Got a UDPConnected")
 		}
+		case UdpConnected.Connected => {
+			println("I guess we're connected now")
+			println(sender)
+
+
+			context.become(ready(sender))
+			sender ! UdpConnected.Send(ByteString(connectUDPRequest))
+		}
 		case x => {
 			println("Client received unknown message:")
 			println(x)
@@ -148,8 +158,6 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 			println("HHH")
 		}
 		case Udp.Received(data,remote) => {
-			//socket ! Udp.send(data,remote)
-			//nextActor ! processed
 			println("I think I received maybe")
 		}
 		case Udp.Unbind => {
@@ -160,5 +168,44 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 			context.stop(self)
 			println("Not sure, once again")
 		}
+		case x:UdpConnected.CommandFailed => {
+			println("Command Failed")
+			println(x)
+		}
+		case x => {
+			println("Received something?")
+			println(x)
+			println(x.getClass)
+		}
 	}
+
+	def connectUDPRequest:Array[Byte] = {
+		val action:Int = 0
+		val transactionId:Int = random.nextInt
+		val buf = ByteBuffer.allocate(16)
+		buf.putLong(connectionId).putInt(action).putInt(transactionId).array
+	}
+
+	def announceUDPRequest:Array[Byte] = {
+		val action:Int = 1
+		val transactionId:Int = random.nextInt
+		val buff = ByteBuffer.allocate(16)
+		val event:Int = 2	// started
+		buff.putLong(connectionId)
+				.putInt(action)
+				.putInt(transactionId)
+				.put(metainfo.infohash)
+				.put(peer_id.getBytes)
+				.putLong(downloaded)
+				.putLong(left)
+				.putLong(uploaded)
+				.putInt(event)
+				.putInt(0)		// IP
+				.putInt(0)		// key
+				.putInt(-1)		// num_want
+				.putShort(port.toShort)
+				.array
+	}
+
+
 }
