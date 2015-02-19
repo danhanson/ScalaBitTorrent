@@ -26,7 +26,6 @@ case class TrackerRequest(meta: Metainfo)(implicit handler:TorrentFileHandler) {
 	implicit def toHttpRequest(trackerID: String = null): HttpRequest = {
 		val tracker = Uri(meta.announce)
 		val builder = Query.newBuilder ++= Seq[(String,String)](
-				("info_hash",  meta.encodedInfohash),
 				("peer_id",    handler.peerID),
 				("port",       handler.port.toString),
 				("uploaded",   handler.uploaded.toString),
@@ -38,7 +37,7 @@ case class TrackerRequest(meta: Metainfo)(implicit handler:TorrentFileHandler) {
 		)
 		if(handler.hasTrackerId){
 		}
-		val query = builder.result()
+		val query = Query.Raw(builder.result().toString()+"&info_hash="+meta.encodedInfohash)
 		Uri(tracker.scheme,tracker.authority,tracker.path,query,tracker.fragment)
 		val uri = Uri(
 				tracker.scheme,

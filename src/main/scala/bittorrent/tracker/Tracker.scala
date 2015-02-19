@@ -19,7 +19,7 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 
 	private var id = ""
 
-	def trackerID: String = id
+	def trackerId: String = id
 
 	override def receive = {
 		case req: TrackerRequest =>
@@ -27,8 +27,8 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 			future.onComplete {
 				x =>
 					val res: TrackerResponse = new TrackerResponse(x.get)
-					if(res.trackerID != null){
-						id = res.trackerID
+					if(res.hasTrackerId){
+						id = res.trackerId
 					}
 					sender ! res
 			}
