@@ -8,7 +8,7 @@ import scala.swing.event.ButtonClicked
 
 // the filemanager constructor is so the GUI knows who to send
 // messages to when you select a new file
-class GUI(filemanager:ActorRef) extends SimpleSwingApplication with Actor {
+class GUI(manager:ActorRef) extends SimpleSwingApplication with Actor {
 
   def top = new MainFrame {
     title = "sBitTorrent"
@@ -32,7 +32,7 @@ class GUI(filemanager:ActorRef) extends SimpleSwingApplication with Actor {
         fileChooser.showOpenDialog(null)
         val file: File = fileChooser.selectedFile
         if (file != null) {   // closing the filechooser gives a null file
-          filemanager ! file
+          manager ! file
         }
     }
   }

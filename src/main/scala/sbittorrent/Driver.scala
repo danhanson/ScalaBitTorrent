@@ -10,18 +10,8 @@ import sun.net.www.content.text.PlainTextInputStream
 object Driver {
   def main(args: Array[String]): Unit = {
     implicit val system = ActorSystem("sbittorrent")
-    //val fileChooser = new FileChooser(new File("input"))
-    //fileChooser.showOpenDialog(null)
-    //val filename = fileChooser.selectedFile
-    //val src = Source.fromFile(filename)(ISO8859)
-    //val metainfo = new Metainfo(src)
-    //println(metainfo)
-    //experimentingWithTracker(metainfo)
-    //val client = system.actorOf(Props(new ClientActor(metainfo)), name="client")
-
-    val client = system.actorOf(Props[FileManager],name="filemanager")
-    val gui: ActorRef = system.actorOf(Props(new GUI(client)),name="gui")
-
+    val manager = system.actorOf(Props[FileManager],name="filemanager")
+    val gui: ActorRef = system.actorOf(Props(new GUI(manager)),name="gui")
     gui ! "start"
   }
 

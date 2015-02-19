@@ -21,7 +21,7 @@ import scala.util.{Failure, Success}
 
 import scala.concurrent.duration._
 
-class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
+class TrackerCommunicator(val manager:ActorRef, val metainfo: Metainfo) extends Actor {
 	var event: String = "started"
 	val port: Int = 6881
 	var uploaded: Int = 0

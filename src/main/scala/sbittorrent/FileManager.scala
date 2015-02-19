@@ -8,7 +8,7 @@ import scala.collection.mutable.ListBuffer
 import scala.io.Source
 
 class FileManager extends Actor {
-  var trackerCounter = 0
+  var nextTrackerId = 0
   val gui:ActorRef = null
   val trackerCommunicators = new ListBuffer[ActorRef]
   override def receive: Receive = {
@@ -16,9 +16,9 @@ class FileManager extends Actor {
       val src = Source.fromFile(file)(ISO8859)
       val metainfo = new HTTPOnlyMetainfo(src)
       var tracker: ActorRef = context.actorOf(Props(
-        new TrackerCommunicator(metainfo)),
-        name="trackercommunicator"+trackerCounter)
-      trackerCounter += 1
+        new TrackerCommunicator(self,metainfo)),
+        name="trackercommunicator"+nextTrackerId)
+      nextTrackerId += 1
       trackerCommunicators += tracker
     }
     case x => {
