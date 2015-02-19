@@ -1,3 +1,4 @@
+package sbittorrent
 import java.io.File
 import scala.io.Codec.ISO8859
 

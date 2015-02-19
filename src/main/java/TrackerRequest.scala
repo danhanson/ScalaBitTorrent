@@ -1,3 +1,4 @@
+package sbittorrent
 import java.security.MessageDigest
 
 object TrackerRequest {

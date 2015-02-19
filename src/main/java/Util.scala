@@ -1,3 +1,4 @@
+package sbittorrent
 object URLUtil {
   def toURLString(in:Array[Byte]): String = {
     var ch: Byte = 0x00

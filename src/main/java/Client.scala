@@ -1,3 +1,4 @@
+package sbittorrent
 import java.math.BigInteger
 import java.net.{InetAddress, InetSocketAddress, URL}
 import java.nio.ByteBuffer

@@ -1,3 +1,4 @@
+package sbittorrent
 import java.math.BigInteger
 import java.net.{URL, URLConnection}
 import java.security.SecureRandom

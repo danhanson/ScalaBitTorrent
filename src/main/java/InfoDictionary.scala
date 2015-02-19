@@ -1,3 +1,4 @@
+package sbittorrent
 package bittorrent.metainfo
 
 class InfoDictionary {

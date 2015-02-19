@@ -1,3 +1,5 @@
+package sbittorrent
+
 import scala.collection.mutable
 
 trait BNode

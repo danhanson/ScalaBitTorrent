@@ -1,3 +1,4 @@
+package sbittorrent
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 

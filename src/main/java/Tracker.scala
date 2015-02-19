@@ -1,21 +1,37 @@
-package bittorrent.client
-
+package sbittorrent
 import akka.actor.{Actor, ActorRef}
-import akka.util.Timeout
-import spray.http.Uri
+import spray.http.HttpResponse
 
-class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
+object Tracker {
+	case class SendStarted(downloaded: Long, uploaded: Long)
+	case class SendStopped(downloaded: Long, uploaded: Long)
+	case class SendCompleted(downloaded: Long, uploaded: Long)
+	object Status extends Enumeration {
+		type Status = Value
+		val Started, Stopped, Completed = Value
+	}
+}
 
-	implicit val timeout: Timeout = new Timeout(2000)
-
-	private var id = ""
-
-	def trackerID: String = id
+class Tracker(val metainfo: Metainfo, val url: String) extends Actor {
+	import Tracker.Status._
+	import Tracker._
 
 	override def receive = {
-		//case req: TrackerRequest =>
-		//	val future : Future[HttpResponse] = (internet ? req.toHttpRequest(id)).mapTo[HttpResponse]
-		//	future.onComplete { x => sender ! new TrackerResponse(x.get) }
-		case _ => throw new Exception("WHAT THE HELL IS THAT?")
+		case SendStarted(d,u) => sendRequest(Started,d,u,sender)
+		case SendStopped(d,u) => sendRequest(Stopped,d,u,sender)
+		case SendCompleted(d,u) => sendRequest(Completed,d,u,sender)
 	}
+
+	def sendRequest(): Unit = {
+		sendRequest(Status.Started,0,0,self)
+	}
+
+	def sendRequest(status: Status, downloaded: Long, uploaded: Long, requester: ActorRef) = {
+		val removeCookieHeaders: HttpResponse => HttpResponse =
+			r => r.withHeaders(r.headers.filter(_.isNot("set-cookie")))
+		//val pipeline = sendReceive ~> removeCookieHeaders
+		//val pipeline: HttpRequest => Future[HttpResponse] = sendReceive()
+	}
+
+
 }

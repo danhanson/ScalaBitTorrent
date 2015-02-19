@@ -1,3 +1,4 @@
+package sbittorrent
 
 /*
 class TorrentFileHandler(meta: Metainfo)(implicit client: Client) extends Actor {
