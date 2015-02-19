@@ -17,7 +17,7 @@ import akka.actor.Actor
 import akka.pattern.ask
 
 import bittorrent.tracker._
-import bittorrent.peer._
+import bittorrent.pwp._
 
 import akka.io.IO
 

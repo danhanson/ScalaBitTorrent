@@ -2,19 +2,18 @@ package bittorrent.client
 
 import akka.actor.ActorRef
 import akka.actor.Actor
-import bittorrent.peer.Message._
+import bittorrent.pwp._
+import bittorrent.pwp.Pwp._
 
 object Seeder {
 	
 }
 
 class Seeder extends Actor {
-
-
 	
 	override def receive = {
 		case hs: HandShake => {
-			
+			println("impolitely ignored handshake")
 		}
 
 		case _ => {

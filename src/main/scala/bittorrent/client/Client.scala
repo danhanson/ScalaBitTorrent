@@ -15,9 +15,13 @@ import scala.collection.mutable.Map
 
 import bittorrent.metainfo.Metainfo
 
+import bittorrent.pwp.Pwp
+import bittorrent.pwp.Pwp._
+
 object Client {
 	implicit val system: ActorSystem = ActorSystem()
 	implicit val internet : ActorRef = IO(Http)
+	//val peers = IO(Pwp)
 	val clientId = "-3d0000-"
 }
 
@@ -32,5 +36,9 @@ class Client(val port: Int = 6881) {
 	def torrent(meta: Metainfo): Unit = {
 		val handler = new TorrentFileHandler(meta)(this)
 		files.put(meta.infohash,handler)
+	}
+
+	def receive {
+		
 	}
 }

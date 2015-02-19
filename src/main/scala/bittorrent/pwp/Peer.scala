@@ -1,20 +1,27 @@
-package bittorrent.peer
+package bittorrent.pwp
 
 import akka.actor.Actor
 import java.net.InetAddress
 import bittorrent.parser._
 
 object Peer {
-	def fromBNode(node: BNode): Peer = {
-		node match {
-			case s: StringNode => new Peer(s)
-			case d: DictNode =>   new Peer(d)
-			case _ => throw new IllegalArgumentException()
+	def fromList(list: List[DictNode]): Seq[Peer] = {
+		list.map {
+			peerDict => new Peer(peerDict)
 		}
+	}
+
+	def fromCompactString(comp: String): Seq[Peer] = {
+		println("compact string!")
+		Nil
 	}
 }
 
 class Peer(val peerId:String,val address:InetAddress,val port:Int) extends Actor {
+
+	println(peerId)
+	println(address)
+	println(port)
 
 	def this(peer:String,addrStr:String,portnum:Int) = {
 		this(peer,InetAddress.getByName(addrStr),portnum)
