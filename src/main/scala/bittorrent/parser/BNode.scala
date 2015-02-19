@@ -1,11 +1,8 @@
-/**
- * Created by michaea1 on 2/13/2015.
- */
 package bittorrent.parser
 
-trait BNode {
-	val value : Any
-}
+import scala.collection.mutable
+
+trait BNode { val value : Any }
 
 class StringNode(val value:String) extends BNode {
   override def toString: String = {
@@ -19,7 +16,7 @@ class ListNode(val value:List[BNode]) extends BNode {
   }
 }
 
-class DictNode(val value:Map[String,BNode],val encoded: String) extends BNode {
+class DictNode(val value:mutable.Map[String,BNode],val encoded:String) extends BNode {
   override def toString(): String = {
     "DictNode["+value.toString+"]"
   }

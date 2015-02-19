@@ -35,7 +35,7 @@ class Client(val port: Int = 6881) {
 
 	def torrent(meta: Metainfo): Unit = {
 		val handler = new TorrentFileHandler(meta)(this)
-		files.put(meta.infohash,handler)
+		files.put(meta.infohash.toString,handler)
 	}
 
 	def receive {

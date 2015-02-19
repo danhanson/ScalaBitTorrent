@@ -1,4 +1,5 @@
-package sbittorrent
+package bittorrent.client
+
 import java.io.File
 
 import akka.actor.{Actor, ActorRef}

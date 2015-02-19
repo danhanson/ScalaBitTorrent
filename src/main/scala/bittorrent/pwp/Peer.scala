@@ -40,7 +40,9 @@ class Peer(val peerId:String,val address:InetAddress,val port:Int) extends Actor
 	}
 
 	def this(node: DictNode) = {
-		this(node.value)
+		this("")
+		// I couldn't merge this line because I couldn't figure out what you were trying to do
+		//this(node.value)
 	}
 
 	def this(node: StringNode) = {

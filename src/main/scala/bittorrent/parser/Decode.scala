@@ -1,4 +1,5 @@
-package sbittorrent
+package bittorrent.parser
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -63,5 +64,10 @@ object Decode extends (String => List[BNode]) {
       remaining = output2._2
     }
     (new DictNode(result,'d'+input.substring(0,input.length-remaining.length)+'e'), remaining.tail)
+  }
+
+  def asDictionary(v1: String): Map[String,BNode] = {
+    if(v1.head != 'd') throw new IllegalArgumentException()
+      readDict(v1.tail)._1.value.toMap
   }
 }

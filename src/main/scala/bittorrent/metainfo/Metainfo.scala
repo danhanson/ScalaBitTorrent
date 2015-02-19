@@ -3,13 +3,13 @@ package bittorrent.metainfo
 import java.security.MessageDigest
 import java.util.Date
 
-import scala.collection.mutable.MutableList
-import scala.collection.mutable
-import scala.io.Source
-
 import bittorrent.parser._
 
-class Metainfo(source: Source) {
+import scala.collection.mutable
+import scala.collection.mutable.MutableList
+import scala.io.Source
+
+class Metainfo(val source: Source) {
   val bnodes : List[BNode] = Decode(source.mkString)
   var announce : String = null
   var comment : String = null
@@ -52,7 +52,7 @@ class Metainfo(source: Source) {
           case vlist:ListNode => {
             k match {
               case "announce-list" => {
-           		for (e <- vlist.value) {
+                for (e <- vlist.value) {
                   e match {
                     case lnode: ListNode => {
                       lnode.value.head match {
@@ -93,7 +93,13 @@ class Metainfo(source: Source) {
                                   }
                                 }
                               }
+                              case _ => {
+                                println("Something else weird happened. Whatever.")
+                              }
                             }
+                          }
+                          case _ => {
+                            println("something weird happened, carry on")
                           }
                         }
                       }
@@ -136,10 +142,8 @@ class Metainfo(source: Source) {
     }
     case _ => { }
   }
-  private val bytes = MessageDigest.getInstance("SHA-1").digest(infodic.getBytes("ISO-8859-1"))
-  val infohash = new String(bytes,"ISO-8859-1")
-  val encodedInfohash = URLUtil.toURLString(bytes)
 
+  val infohash: Array[Byte] = MessageDigest.getInstance("SHA-1").digest(infodic.getBytes("ISO-8859-1"))
   val pieces: Array[Array[Byte]] = new Array[Array[Byte]](piecesArray.length/20)
   for (i <- 0 to piecesArray.length / 20 - 1) {
     pieces(i) = piecesArray.slice(20*i,20*(i+1))

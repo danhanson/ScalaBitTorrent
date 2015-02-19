@@ -1,27 +1,35 @@
-package sbittorrent
+package bittorrent.tracker
+
 import java.math.BigInteger
-import java.net.{InetAddress, InetSocketAddress, URL}
+import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
-import akka.util.ByteString
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
-import akka.actor.{Actor, ActorRef}
-import akka.io.{IO, Udp, UdpConnected}
+import akka.actor.{Actor, ActorRef, Props}
+import bittorrent.metainfo.{URLUtil, Metainfo}
+import bittorrent.parser._
+import bittorrent.peer.PeerCommunicationManager
 import spray.client.pipelining._
 import spray.http.Uri.ParsingMode
 import spray.http._
 
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
-
 import scala.concurrent.duration._
+import scala.util.Success
 
-class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
+
+/*  Responsible for communication with the tracker initially and then at regular
+ *  intervals. It maintains peer_list which contains all of the peers from the
+ *  tracker. After the initial communication, it spawns an actor to deal with
+ *  managing the peer workers that will need to be spawned for the peer list.
+ *
+ *  As of 2/19/2015 it supports HTTP but not UDP
+ */
+class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 	var event: String = "started"
 	val port: Int = 6881
 	var uploaded: Int = 0
@@ -32,20 +40,19 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 	val encodedInfoHash: String = URLUtil.toURLString(metainfo.infohash)
 	val random = new SecureRandom
 	val peer_id: String = new BigInteger(100, random).toString(32)
-	var peer_list: List[(InetAddress, Int)] = List.empty[(InetAddress,Int)]		// (ip,port)
+	var peer_list: List[(InetAddress, Short)] = List.empty[(InetAddress,Short)]		// (ip,port)
 	var interval: Int = 0
 	var complete: Int = 0
 	var incomplete: Int = 0
 	var connectionId:Long = 0x0000041727101980L
+	var listeners:ListBuffer[ActorRef] = new ListBuffer[ActorRef]
+	var peer_manager:ActorRef = null
 
 	contactTracker
 
 
-
 	private def contactTracker(): Unit = {
-		if (metainfo.announce.toString.startsWith("udp")) {
-			contactUDPTracker
-		} else if (metainfo.announce.startsWith("http")) {
+		if (metainfo.announce.startsWith("http")) {
 			contactHTTPTracker
 		} else {
 			println("Unrecognized protocol: "+metainfo.announce)
@@ -63,7 +70,7 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 				context.system.scheduler.scheduleOnce(Duration.create(interval,TimeUnit.SECONDS))(contactTracker)
 				complete = parsed.value.get("complete").get.asInstanceOf[IntNode].value
 				incomplete = parsed.value.get("incomplete").get.asInstanceOf[IntNode].value
-				val peer_list_buffer: ListBuffer[(InetAddress, Int)] = new ListBuffer[(InetAddress,Int)]
+				val peer_list_buffer: ListBuffer[(InetAddress, Short)] = new ListBuffer[(InetAddress,Short)]
 				parsed.value.get("peers").get match {
 					case peers:ListNode => {
 						// list of dictionaries, could be empty
@@ -72,7 +79,7 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 							val port = peerMap.get("port").get.asInstanceOf[IntNode].value
 							val ipString: String = peerMap.get("ip").get.asInstanceOf[StringNode].value
 							val address = InetAddress.getByName(ipString)
-							peer_list_buffer += ((address,port))
+							peer_list_buffer += ((address,port.toShort))
 						}
 					}
 					case peers:StringNode => {
@@ -82,13 +89,14 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 							val ipBytes = byteArray.slice(6 * i, 6 * i + 4)
 							val portBytes = byteArray.slice(6 * i + 4, 6 * i + 6)
 							val address: InetAddress = InetAddress.getByAddress(ipBytes)
-							val port: Int = ByteBuffer.wrap(portBytes).getShort.toInt
-							peer_list_buffer += ((address,port))
+							val port: Short = ByteBuffer.wrap(portBytes).getShort
+							if (port > 0) peer_list_buffer += ((address,port))
 						}
 					}
 				}
 				println("Peers are: " + peer_list_buffer.toList)
 				peer_list = peer_list_buffer.toList
+				if (peer_manager==null) startPeerCommunication
 				notifyWithPeerlist()
 			}
 			case x => {
@@ -97,15 +105,15 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 		}
 	}
 
-	private def contactUDPTracker(): Unit = {
-		import context.system
-		//val remote = new InetSocketAddress("open.demonii.com",1337)
-		val remote = new InetSocketAddress("tracker.openbittorrent.com",80)
-		IO(UdpConnected) ! UdpConnected.Connect(self,remote)
+	private def startPeerCommunication: Unit = {
+		println(peer_list)
+		peer_manager = context.actorOf(Props(
+			new PeerCommunicationManager(metainfo,peer_id,peer_list,id)),
+			name="peerCommunicationManager"+id)
 	}
 
 	private def notifyWithPeerlist(): Unit = {
-		// TODO
+		listeners.foreach(x => x ! ("start",metainfo,peer_list))
 	}
 
 
@@ -126,86 +134,13 @@ class TrackerCommunicator(val metainfo: Metainfo) extends Actor {
 		case "contact" => {
 			contactTracker
 		}
-		case Udp.Bound(local) => {
-			println("Got a UDP thingy")
-			context.become(ready(sender()))
-		}
-		case UdpConnected.Received => {
-			println("Got a UDPConnected")
-		}
-		case UdpConnected.Connected => {
-			println("I guess we're connected now")
-			println(sender)
-
-
-			context.become(ready(sender))
-			sender ! UdpConnected.Send(ByteString(connectUDPRequest))
+		case "subscribe" => {
+			listeners += (sender)
 		}
 		case x => {
 			println("Client received unknown message:")
 			println(x)
 		}
 	}
-
-	def ready(socket:ActorRef):Receive = {
-		case UdpConnected.Received(data) => {
-			println("FFF")
-		}
-		case UdpConnected.Disconnect => {
-			println("GGG")
-		}
-		case UdpConnected.Disconnected => {
-			println("HHH")
-		}
-		case Udp.Received(data,remote) => {
-			println("I think I received maybe")
-		}
-		case Udp.Unbind => {
-			socket ! Udp.Unbind
-			println("Not really sure what this does")
-		}
-		case Udp.Unbound => {
-			context.stop(self)
-			println("Not sure, once again")
-		}
-		case x:UdpConnected.CommandFailed => {
-			println("Command Failed")
-			println(x)
-		}
-		case x => {
-			println("Received something?")
-			println(x)
-			println(x.getClass)
-		}
-	}
-
-	def connectUDPRequest:Array[Byte] = {
-		val action:Int = 0
-		val transactionId:Int = random.nextInt
-		val buf = ByteBuffer.allocate(16)
-		buf.putLong(connectionId).putInt(action).putInt(transactionId).array
-	}
-
-	def announceUDPRequest:Array[Byte] = {
-		val action:Int = 1
-		val transactionId:Int = random.nextInt
-		val buff = ByteBuffer.allocate(16)
-		val event:Int = 2	// started
-		buff.putLong(connectionId)
-				.putInt(action)
-				.putInt(transactionId)
-				.put(metainfo.infohash)
-				.put(peer_id.getBytes)
-				.putLong(downloaded)
-				.putLong(left)
-				.putLong(uploaded)
-				.putInt(event)
-				.putInt(0)		// IP
-				.putInt(0)		// key
-				.putInt(-1)		// num_want
-				.putShort(port.toShort)
-				.array
-	}
-
 
 }

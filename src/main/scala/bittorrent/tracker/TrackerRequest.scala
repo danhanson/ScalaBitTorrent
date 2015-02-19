@@ -37,7 +37,7 @@ case class TrackerRequest(meta: Metainfo)(implicit handler:TorrentFileHandler) {
 		)
 		if(handler.hasTrackerId){
 		}
-		val query = Query.Raw(builder.result().toString()+"&info_hash="+meta.encodedInfohash)
+		val query = Query.Raw(builder.result().toString()+"&info_hash="+meta.infohash.toString)
 		Uri(tracker.scheme,tracker.authority,tracker.path,query,tracker.fragment)
 		val uri = Uri(
 				tracker.scheme,
