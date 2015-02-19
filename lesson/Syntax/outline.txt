@@ -1,0 +1,71 @@
+Introduction
+	So, what is scala trying to be?
+		"Construct elegant class hierarchies for maximum code reuse and
+		extensibility, implement their behavior using higher order
+		functions. Or anything in-between"
+
+		I find that that's fairly true. It has everything you need for OO
+		and functional design, and isn't overly opinionated about it.
+		Further, they interact in pretty interesting and elegant ways.
+
+	Features
+		Java - Scala runs on the JVM and is fully integrated with java.
+		You can straight import classes from the Java standard libraries
+		and instantiate them with no extra syntax, and Scala classes in
+		Java (so long as they make sense). Brief research shows compiled
+		Scala is similar to java, sometimes better, sometimes wors
+		
+		Type inference - Strong typing with type inference. The type
+		inference is also pretty clever and gives (from experience) good
+		error messages. It's also doing a bunch of complicated abstract
+		math about types, which Adam is going to talk about.
+
+		Actors - Scala has good support for concurrency, with the preferred
+		method being Actors, which are basically erlang processes, even
+		with the same syntax.
+
+		Traits - Basically more powerful interfaces, allowing multiple
+		inheritance. A trait can contain method declarations, but it can
+		also contain concrete code. Inherit from the trait to mix that code
+		into your class.
+
+		Pattern matching - Case classes define bundles of data and
+		implement everything needed to make them work in OO land (toString,
+		equals, hashCode), and you can still define methods on them. Then,
+		you can easily do pattern matching on them (though weaker than
+		erlang/prolog; you can't do it everywhere)
+
+		Higher order functions - and everything that goes with them.
+		Methods defined by a class are simply members of the resulting
+		object, and can be used as any other method object. map, filter,
+		foreach and so on are defined on all the data structures.
+
+Syntax overview (aka things in the syntax I think are interesting/weird)
+
+	Boring things (just show a syntax example)
+		Anonymous functions
+		Sequence comprehension
+		Currying
+		Automatic infix operators
+		Pattern matching
+			switch-case
+
+
+	Class syntax
+		function analouge (execute body) (constructor arguments)
+		type parameters, type members
+		singleton object
+
+		case classes
+			data bundles that are also full classes (no new, public parameters)
+			equals, hashcode, toString
+		
+	Implicit parameters
+		automatically find parameters
+
+	Automatic Type-Dependant Closure Construction
+		use type inference to smooth over the difference between data and
+		code
+		talk about what it is
+		show the loop-unless example
+		pretty light

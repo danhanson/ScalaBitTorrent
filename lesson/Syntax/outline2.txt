@@ -1,0 +1,65 @@
+Scala - OO meets FP
+	So the idea behind scala (or at least, my interperetation of it) is that OO
+	design is a useful abstraction for organizing and reusing lots of code, and
+	FP is a good way to elegantly express what would otherwise be very complex
+	logic, so why not use both? And I don't mean they're both in the language
+	and you can use whatever is appropriate, I mean you use them both,
+	together. The result, in my opinion, is a very powerful and elegant
+	languange, with many interesting syntax constructs that make a lot of
+	syntax.
+
+	First, though, I want to talk about the language is good at accomplishing.
+	So to introduce the language, I'm going to shamefully steal the overview on
+	scala's website, and give a brief overview of each of the features they
+	advertise. Then I'm going to talk about the parts of syntax that are
+	unusual/interesting
+
+Java
+	jvm - portability, performant
+	interoperability with java code
+	influence from java syntax, without the verbose bits
+
+Types
+	Strong typing with a very sophisticated type system
+	Type inference to cut down on verbosity - and it's pretty good
+	inference isn't just convenience, it also does a lot of abstract math which
+	can be made to do significant work at compile time.
+
+Actors
+	Good support for concurrency
+	advertised method is actors, which are basically exactly like processes in
+	erlang.
+
+Traits
+	Like interfaces that can contain code, traits can be used to add
+	functionality to classes that implemenmt some interface
+
+Pattern matching
+	Easily decompose structured data. Something like what you see in erlang,
+	but less powerful because you can't do it everywhere.
+
+	This is supported by case classes. These are basically lightweight classes
+	that are just bundles of data.
+
+Higher order functions
+	And everything else you need for FP. The preferred versions of collections
+	are immutable, and they implement map/reduce/foreach and so on. Methods on
+	an object are also first class objects, and can be accessed just as any
+	other member variable.
+
+Syntax overview 
+Classes <example on slide>
+	function analouge
+	type parameters/members
+	singleton object
+	case classes
+		equals, hashCode, toString, public parameters, new
+
+Implicit parameters
+	automatically find appropriate parameters
+
+Automatic Type-Dependant Closure Construction
+	explain what it is
+	show the loop-unless example
+	can smooth the difference between data and code, which helps with the FP/OO
+
