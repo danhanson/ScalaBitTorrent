@@ -58,11 +58,11 @@ class TorrentFileHandler(meta: Metainfo)(implicit client: Client){
 		throw new Exception("THE TORRENT BROKE")
 	}
 
-	private def hasTrackerId: Boolean = {
+	def hasTrackerId: Boolean = {
 		trackerID.isDefined
 	}
 
-	private def trackerId: String = {
+	def trackerId: String = {
 		trackerID.get
 	}
 }

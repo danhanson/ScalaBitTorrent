@@ -7,8 +7,6 @@ import scala.collection.mutable.MutableList
 import scala.collection.mutable
 import scala.io.Source
 
-import akka.util.ByteString
-
 import bittorrent.parser._
 
 class Metainfo(source: Source) {
@@ -97,7 +95,7 @@ class Metainfo(source: Source) {
                               }
                             }
                           }
-            URLUtil            }
+                        }
                       }
                     }
                     case iNode: IntNode => {
@@ -139,9 +137,8 @@ class Metainfo(source: Source) {
     case _ => { }
   }
   private val bytes = MessageDigest.getInstance("SHA-1").digest(infodic.getBytes("ISO-8859-1"))
-  private val string = ByteString(bytes).decodeString("ISO-8859-1")
-  val infohash: String = string
-  println(URLUtil.toURLString(bytes))
+  val infohash = new String(bytes,"ISO-8859-1")
+  val encodedInfohash = URLUtil.toURLString(bytes)
 
   val pieces: Array[Array[Byte]] = new Array[Array[Byte]](piecesArray.length/20)
   for (i <- 0 to piecesArray.length / 20 - 1) {

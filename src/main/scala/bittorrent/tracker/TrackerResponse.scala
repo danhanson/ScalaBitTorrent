@@ -21,5 +21,5 @@ class TrackerResponse(res: HttpResponse) {
 	val interval: Int = get[Int](dict,"interval",0)
 	val minInterval: Int = get[Int](dict,"interval",0)
 	val trackerID: String = get[String](dict,"tracker id")
-	def peers: Seq[Peer]
+	def peers: Seq[Peer] = Nil
 }

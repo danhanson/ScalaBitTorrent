@@ -1,4 +1,4 @@
-package bittorrent.client
+package bittorrent.tracker
 
 import scala.concurrent.Future
 
