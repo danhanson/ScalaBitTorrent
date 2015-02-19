@@ -2,12 +2,14 @@ import java.io.File
 import scala.io.Codec.ISO8859
 
 import akka.actor.{ActorRef, Props, Actor}
+import scala.collection.mutable.ListBuffer
 
 import scala.io.Source
 
 class FileManager extends Actor {
   var trackerCounter = 0
   val gui:ActorRef = null
+  val trackerCommunicators = new ListBuffer[ActorRef]
   override def receive: Receive = {
     case file:File => {
       println("FileManager received a file")
@@ -17,6 +19,7 @@ class FileManager extends Actor {
         new TrackerCommunicator(metainfo)),
         name="trackercommunicator"+trackerCounter)
       trackerCounter += 1
+      trackerCommunicators += tracker
     }
     case x => {
       println("FileManager received an unknown message: "+x)
