@@ -148,6 +148,7 @@ class Metainfo(val source: Source) {
   for (i <- 0 to piecesArray.length / 20 - 1) {
     pieces(i) = piecesArray.slice(20*i,20*(i+1))
   }
+  val total_pieces = pieces.length
 
   override def toString: String = {
     return "Announcde: "+announce+

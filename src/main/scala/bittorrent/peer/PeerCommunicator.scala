@@ -27,13 +27,13 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   var remote = new InetSocketAddress(address,port)
   var his_peer_id:Array[Byte] = null
   var completed_handshake:Boolean = false
-  var remaining_pieces:BitSet = BitSet((0 to metainfo.pieces.length-1):_*)
+  var remaining_pieces:BitSet = BitSet((0 to metainfo.total_pieces-1):_*)
   val peer_pieces:BitSet = BitSet()
   //val peer_pieces:BitSet = BitSet((0 to metainfo.pieces.length-1):_*)   // this is just for testing purposes
-  val num_total_pieces:Int = metainfo.pieces.length
+  val num_total_pieces:Int = metainfo.total_pieces
   var connection:ActorRef = null
   var watchers:ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
-  var continue_parsing:ByteString=>(Int,Array[Byte]) = null
+  var continue_parsing:ByteString=>(Int,Int,Array[Byte]) = null
   var acted_recently = false
 
   val manager = IO(Tcp)
@@ -54,13 +54,16 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
             sendUnchoke
           } else if(continue_parsing != null) {
             continue_parsing(msg) match {
-              case (index:Int,piece:Array[Byte]) => {
+              case (index:Int,-1,piece:Array[Byte]) => {
                 println("Completed piece: "+piece)
                 watchers.foreach(w=>w!("complete",index,piece))
                 remaining_pieces -= index
                 continue_parsing = null
                 println("Remaining pieces: "+remaining_pieces)
                 requestPiece
+              }
+              case (piece_num:Int,offset:Int,null) => {
+                requestPiece(piece_num,offset)
               }
               case null => { }
             }
@@ -96,13 +99,16 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     } else {
       val piece_num = choices.head
       val offset = 0
-      println("OK! Time to request a block")
-      println("Piece Length = "+metainfo.pieceLength)
-      println("Block size: "+block_size)
       connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
       acted_recently = true
       println("Just requested piece #"+piece_num+" with offset "+offset)
     }
+  }
+
+  def requestPiece(piece_num:Int,offset:Int): Unit = {
+    connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
+    acted_recently = true
+    println("Just requested piece #"+piece_num+" with offset "+offset)
   }
 
   def requestBlock(piece_num:Int,offset:Int): Array[Byte] = {
@@ -220,7 +226,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       }
       case 7 => {   // piece
         println("I got a piece message")
-        continue_parsing = new PieceBuilder(bytes)
+        continue_parsing = new PieceBuilder(metainfo.pieceLength,bytes)
       }
       case 8 => {   // cancel
         println("I got a cancel message")

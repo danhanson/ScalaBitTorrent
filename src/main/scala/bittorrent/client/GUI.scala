@@ -26,7 +26,7 @@ class GUI(filemanager:ActorRef) extends Actor {
     val button = new Button {
       text = "new download"
     }
-    val headers: Seq[String] = Array("Name","Seeders","Leechers","Peers","Blocks")
+    val headers: Seq[String] = Array("Name","Seeders","Leechers","Peers","Pieces")
     val rowData: Array[Array[Any]] = Array.tabulate[Any](25,5) ((_,_) => "")
     table = new Table(rowData, headers) {
       selection.elementMode = Table.ElementMode.Cell
