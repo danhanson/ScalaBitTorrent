@@ -3,7 +3,7 @@ package bittorrent.peer
 import java.net.{InetAddress, InetSocketAddress}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Kill, ActorRef, Actor}
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
@@ -99,9 +99,11 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   }
 
   def requestPiece: Unit = {
-    if (peer_pieces.isEmpty) {
-      peer_pieces = BitSet((0 to metainfo.total_pieces-1):_*)
+    if (remaining_pieces.isEmpty) {
+      self ! Kill
+      return
     }
+    if (peer_pieces.isEmpty) peer_pieces = BitSet((0 to metainfo.total_pieces-1):_*)
     val choices = peer_pieces & remaining_pieces
       val piece_num = choices.head
       val offset = 0
@@ -123,7 +125,16 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     requestBytes.writeByte(6)         // 1 byte
     requestBytes.writeInt(piece_num)  // 4 bytes
     requestBytes.writeInt(offset)     // 4 bytes
-    requestBytes.writeInt(block_size) // 4 bytes
+    if (piece_num*block_size+offset + block_size > metainfo.fileLength) {
+      requestBytes.writeInt(metainfo.fileLength - offset - piece_num*block_size)
+
+    } else if (offset + block_size > metainfo.pieceLength) {
+      requestBytes.writeInt(metainfo.pieceLength - offset)
+      println("Length of request was: "+(metainfo.pieceLength-offset))
+    } else {
+      requestBytes.writeInt(block_size) // 4 bytes
+      println("Length of request was: "+block_size)
+    }
     requestBytes.array
   }
 
@@ -241,7 +252,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       }
       case 7 => {   // piece
         println("I got a piece message")
-        continue_parsing = new PieceBuilder(metainfo.pieceLength,bytes)
+        continue_parsing = new PieceBuilder(metainfo,bytes)
       }
       case 8 => {   // cancel
         println("I got a cancel message")

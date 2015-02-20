@@ -1,6 +1,7 @@
 package bittorrent.peer
 
 import akka.util.ByteString
+import bittorrent.metainfo.Metainfo
 import scala.collection.mutable.{ListBuffer, Buffer}
 
 /**
@@ -8,7 +9,7 @@ import scala.collection.mutable.{ListBuffer, Buffer}
  * Since pieces are broken between messages, we instantiate an instance
  * of this function and call it repeatedly until the entire piece is consumed.
  */
-class PieceBuilder(val piece_length:Int,val first_message:ByteString) extends (ByteString => (Int,Int,Array[Byte])) {
+class PieceBuilder(val metainfo: Metainfo,val first_message:ByteString) extends (ByteString => (Int,Int,Array[Byte])) {
   var lengthPrefix: Int = first_message.take(4).toByteBuffer.getInt
   var messageId: Byte = first_message.drop(4).head
   var index: Int = first_message.drop(5).take(4).asByteBuffer.getInt
@@ -19,12 +20,18 @@ class PieceBuilder(val piece_length:Int,val first_message:ByteString) extends (B
   var inside_of_block = true
 
   override def apply(msg: ByteString): (Int, Int, Array[Byte]) = {
+    println("Calling the function")
+    println(inside_of_block)
+    println(remaining_in_block)
+    println(total_piece)
+    println(index)
     if (inside_of_block) {
       current_block ++= msg
       //println("Status (piece "+index+"): "+piece.length+" / "+(lengthPrefix-9)+" bytes")
       if (current_block.length + 9 == lengthPrefix) {
         total_piece ++= current_block
-        if (total_piece.length == piece_length) {
+        //if (total_piece.length == piece_length) {
+        if (total_piece.length == metainfo.pieceLength || (index == metainfo.total_pieces-1 && index*16384+total_piece.length == metainfo.fileLength)) {
           return (index, -1, total_piece.toArray)
         }
         current_block = ListBuffer.empty[Byte]

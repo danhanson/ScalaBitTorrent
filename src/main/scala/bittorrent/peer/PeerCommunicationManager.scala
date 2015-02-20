@@ -21,7 +21,6 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],peers:List
   val pieces = new mutable.HashMap[Int,Array[Byte]]
   var saveFile:File = null
 
-  // the `take(1)` on the following line should be removed once we get everything working
   for ((ip,port) <- peers) {
     var worker: ActorRef = context.actorOf(Props(
       new PeerCommunicator(metainfo,peer_id,ip,port,nextId)),
@@ -67,9 +66,9 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],peers:List
       }
     }
     println("Length of final result: "+complete.length)
-    val out = new FileOutputStream(("output"))
+    val out = new FileOutputStream(saveFile)
     out.write(complete)
     out.close()
-    println("Wrote output to: output")
+    println("Wrote output to: "+saveFile)
   }
 }

@@ -162,4 +162,7 @@ class Metainfo(val source: Source) {
     "\nFile Lengths: " + fileLengths+
     "\nInfohash " + infohash
   }
+
+  val fileLength = if (fileLengths.contains(null)) fileLengths.get(null).get else fileLengths.values.sum
+
 }
