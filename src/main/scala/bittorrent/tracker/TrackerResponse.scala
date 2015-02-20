@@ -18,10 +18,14 @@ class TrackerResponse(res: HttpResponse) {
 
 	// TODO: handle caste exceptions caused by bad responses
 
-	private val failureReason: Option[String] = get[String](dict,"failure reason")
+	private val failureReasonOpt: Option[String] = get[String](dict,"failure reason")
+
 	val warningMessageOpt: Option[String] = get[String](dict,"warning message")
+
 	val interval: Int = get[Int](dict,"interval").getOrElse(2)
+
 	val minInterval: Int = get[Int](dict,"interval").getOrElse(0)
+
 	private val trackerIdOpt: Option[String] = get[String](dict,"tracker id")
 
 	private val peers = dict.get("peers").map {
@@ -34,4 +38,10 @@ class TrackerResponse(res: HttpResponse) {
 
 	val hasTrackerId : Boolean = trackerIdOpt.isDefined
 	lazy val trackerId : String = trackerIdOpt.get
+	
+	val hasFailed : Boolean = failureReasonOpt.isDefined
+	lazy val failureReason : String = failureReasonOpt.get
+
+	val hasWarning : Boolean = warningMessageOpt.isDefined
+	lazy val warning : String = warningMessageOpt.get
 }

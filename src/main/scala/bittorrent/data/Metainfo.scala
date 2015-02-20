@@ -1,28 +1,37 @@
-package bittorrent.metainfo
+package bittorrent.data
 
 import java.security.MessageDigest
 import java.util.Date
-
 import scala.collection.mutable.MutableList
 import scala.collection.mutable
 import scala.io.Source
-
+import scala.collection.mutable.IndexedSeq
 import bittorrent.parser._
 
+import akka.util.ByteString
+
+object Metainfo {
+	class File(val name:String,val length:Long,val md5sum:Seq[Byte] = null)
+}
+
 class Metainfo(source: Source) {
+  import Metainfo._
+  import Download._
+
   val bnodes : List[BNode] = Decode(source.mkString)
   var announce : String = null
   var comment : String = null
   var createdBy : String = null
   var creationDate : Date = null
   var announceList : MutableList[String] = MutableList.empty[String]
-  var fileLengths : mutable.HashMap[String, Int] = new mutable.HashMap[String, Int]
+  private var filesM : MutableList[File] = new MutableList
   var pieceLength : Int = -1
   var privateFlag : Int = -1
-  var name : String = null
-  var piecesArray : Array[Byte] = null
+  private var pieceHashes : Seq[Byte] = null
   var infodic : String = null
-
+  private var nameOpt: Option[String] = None
+  private var lengthOpt: Option[Long] = None
+  
   bnodes.head match {
     case dnode: DictNode => {
       for ((k: String,v) <- dnode.value) {
@@ -82,14 +91,14 @@ class Metainfo(source: Source) {
                               case (ls : ListNode, len: IntNode) => {
                                 ls.value.head match {
                                   case path: StringNode => {
-                                    fileLengths += ((path.value, len.value))
+                                    filesM += new File(path.value, len.value)
                                   }
                                 }
                               }
                               case (len: IntNode, ls : ListNode) => {
                                 ls.value.head match {
                                   case path: StringNode => {
-                                    fileLengths += ((path.value, len.value))
+                                    filesM += new File(path.value, len.value)
                                   }
                                 }
                               }
@@ -107,7 +116,7 @@ class Metainfo(source: Source) {
                           privateFlag = iNode.value
                         }
                         case "length" => {
-                          fileLengths += ((null,iNode.value))
+                          lengthOpt = Option(iNode.value)
                         }
                         case _ => {
                           println(key)
@@ -118,10 +127,10 @@ class Metainfo(source: Source) {
                     case s2Node: StringNode => {
                       key match {
                         case "name" => {
-                          name = s2Node.value
+                          nameOpt = Option(s2Node.value)
                         }
                         case "pieces" => {
-                          piecesArray = s2Node.value.getBytes("ISO-8859-1")
+                          pieceHashes = s2Node.value.getBytes("ISO-8859-1")
                         }
                       }
                     }
@@ -140,9 +149,18 @@ class Metainfo(source: Source) {
   val infohash = new String(bytes,"ISO-8859-1")
   val encodedInfohash = URLUtil.toURLString(bytes)
 
-  val pieces: Array[Array[Byte]] = new Array[Array[Byte]](piecesArray.length/20)
-  for (i <- 0 to piecesArray.length / 20 - 1) {
-    pieces(i) = piecesArray.slice(20*i,20*(i+1))
+  if(nameOpt.isDefined){
+  	filesM += new File(nameOpt.get,lengthOpt.get)
+  }
+
+  val totalLength: Long = files.foldLeft(0L){
+	  (len:Long,file:File) => len + file.length
+  }
+
+  val files : Seq[File] = filesM.toList
+ 
+  val pieces: Seq[Piece] = (0 until pieceHashes.length/20).map {
+	  i => new Piece(i,pieceLength,pieceHashes.slice(20*i,20*(i+1)))(this)
   }
 
   override def toString: String = {
@@ -153,8 +171,7 @@ class Metainfo(source: Source) {
     "\nCreated By: "+createdBy+
     "\nPiece Length: " + pieceLength+
     "\nPrivate Flag: " + privateFlag+
-    "\nName: " + name+
-    "\nFile Lengths: " + fileLengths+
+    "\nfiles: " + files.mkString +
     "\nInfohash " + infohash
   }
 }

@@ -3,6 +3,7 @@ package bittorrent.pwp
 import akka.actor.Actor
 import java.net.InetAddress
 import bittorrent.parser._
+import bittorrent.data.HasPieces
 
 object Peer {
 	def fromList(list: List[DictNode]): Seq[Peer] = {
@@ -17,11 +18,13 @@ object Peer {
 	}
 }
 
-class Peer(val peerId:String,val address:InetAddress,val port:Int) extends Actor {
+class Peer(val peerId:String,val address:InetAddress,val port:Int) extends Actor with HasPieces {
 
 	println(peerId)
 	println(address)
 	println(port)
+
+	
 
 	def this(peer:String,addrStr:String,portnum:Int) = {
 		this(peer,InetAddress.getByName(addrStr),portnum)

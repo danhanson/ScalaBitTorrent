@@ -1,4 +1,4 @@
-package bittorrent.metainfo
+package bittorrent.data
 
 object URLUtil {
   def toURLString(in:Array[Byte]): String = {

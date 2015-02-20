@@ -10,6 +10,10 @@ import akka.actor.Props
 import akka.util.ByteString
 import spray.io.BackPressureHandling.Ack
 
+import bittorrent.data.Download.{BitField => BitFieldData,Block,Piece}
+import bittorrent.data.HasPieces
+import bittorrent.client.Torrent
+
 import scala.collection.immutable.Traversable
 
 import java.net.InetSocketAddress
@@ -25,62 +29,69 @@ object Pwp extends ExtensionId[PwpExtension] with ExtensionIdProvider {
 		abstract sealed class Command extends Message
 	
 		abstract sealed class HasLength(val length:Int) extends Message {
-			def hasID : Boolean
-			def getID : Integer
+			def hasId : Boolean
+			def getId : Integer
 			def tcpMessage : Tcp.Message = Tcp.Close
 			protected def messageBytes: ByteString = ByteString()
 		}
 
-		abstract sealed class HasID(length:Int, id:Byte) extends HasLength(length){
-			final override def hasID : Boolean = true
-			final override def getID : Integer = id
+		abstract sealed class HasId(length:Int, id:Byte) extends HasLength(length){
+			final override def hasId : Boolean = true
+			final override def getId : Integer = id
 		}
 
-		abstract sealed class NoID(length: Int) extends HasLength(length){
-			final override def hasID : Boolean = false;
-			final override def getID : Nothing = {
+		abstract sealed class NoId(length: Int) extends HasLength(length){
+			final override def hasId : Boolean = false;
+			final override def getId : Nothing = {
 				throw new NoSuchElementException()
 			}
 		}
 
 		case class Bind(
-				listener:ActorRef,
-				endpoint:InetSocketAddress,
-				backlog:Int,
-				options:Traversable[SocketOption]=Nil,
-				pullMode:Boolean=false
+				val listener:ActorRef,
+				val endpoint:InetSocketAddress,
+				val backlog:Int = 100,
+				val options:Traversable[SocketOption]=Nil,
+				val pullMode:Boolean=false
 			) extends Command
 
 		case class HandShake(
-				val pstrlen:Byte,
-				val pstr:String,
-				val reserved:Long,
-				val infoHash:String,
-				val peerID:String
-			) extends NoID(49 + pstrlen)
+				val protocol: String,
+				val peer: Peer
+			) extends NoId(49 + protocol.length())
 
-		case class KeepAlive()    extends NoID(0)
+		case class KeepAlive()    extends NoId(0)
 
-		case class Choke()        extends HasID(1,0)
+		case class Choke()        extends HasId(1,0)
 
-		case class Unchoke()      extends HasID(1,1)
+		case class Unchoke()      extends HasId(1,1)
 
-		case class Interested()   extends HasID(1,2)
+		case class Interested()   extends HasId(1,2)
 
-		case class NotIntrested() extends HasID(1,3)
+		case class NotIntrested() extends HasId(1,3)
 
-		case class Have(val index:Byte) extends HasID(5,4)
+		case class Have(val index:Byte) extends HasId(5,4)
+
+		object BitField{
+			def apply(hasPieces: HasPieces): BitField = {
+				BitField(new BitFieldData(hasPieces))
+			}
+		}
 
 		case class BitField(
-				val bitFieldLength:Byte,
-				val bitfield: Array[Byte]
-			) extends HasID(1+bitFieldLength,5)
+				val value: BitFieldData
+			) extends HasId(1+value.bytes.length,5)
 
 		case class Request(
-				val index: Int,
-				val begin: Int, 
-				val RequestLength: Int
-			) extends HasID(13,6);
+				val block: Block
+			) extends HasId(13,6);
+
+		case class Piece(
+				val block: Block,
+				val data: ByteString
+			) extends HasId(9+block.length,7)
+
+		case class Cancel() extends HasId(13,8)
 
 	class PwpProxy(peer: ActorRef) extends Actor {
 		override def receive = {

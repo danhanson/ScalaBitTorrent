@@ -1,8 +1,8 @@
 package bittorent.parser
 
 import scala.io.Source
-import bittorrent.metainfo.Metainfo
-
+import bittorrent.data.Metainfo
+/*
 /**
  * Created by adam on 1/28/15.
  */
@@ -11,3 +11,4 @@ object BEncode extends (Source => Metainfo) {
     new Metainfo(v1)
   }
 }
+*/

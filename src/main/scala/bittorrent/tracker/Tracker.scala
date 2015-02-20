@@ -17,9 +17,9 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 
 	implicit val timeout: Timeout = new Timeout(2000)
 
-	private var id = ""
+	private var id: Option[String] = None
 
-	def trackerId: String = id
+	def trackerId: String = id.get
 
 	override def receive = {
 		case req: TrackerRequest =>
@@ -28,7 +28,7 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 				x =>
 					val res: TrackerResponse = new TrackerResponse(x.get)
 					if(res.hasTrackerId){
-						id = res.trackerId
+						id = Option(res.trackerId)
 					}
 					sender ! res
 			}

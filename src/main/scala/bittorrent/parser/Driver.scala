@@ -4,7 +4,7 @@ import scala.io.Source
 import scala.io.Codec.ISO8859
 import scala.swing.FileChooser
 import java.io.File
-import bittorrent.metainfo._
+import bittorrent.data._
 import bittorrent.client.Client
 
 /**
@@ -25,8 +25,8 @@ object Driver {
     println(metainfo.createdBy)
     println("Piece Length: " + metainfo.pieceLength)
     println("Private Flag: " + metainfo.privateFlag)
-    println("Name: " + metainfo.name)
-    println("File Lengths: " + metainfo.fileLengths)
+   // println("Name: " + metainfo.name)
+    //println("File Lengths: " + metainfo.fileLengths)
     val client = new Client()
     if(metainfo != null){
     	client.torrent(metainfo);
