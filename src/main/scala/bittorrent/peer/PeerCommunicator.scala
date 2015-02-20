@@ -28,7 +28,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   var his_peer_id:Array[Byte] = null
   var completed_handshake:Boolean = false
   var remaining_pieces:BitSet = BitSet((0 to metainfo.total_pieces-1):_*)
-  val peer_pieces:BitSet = BitSet()
+  var peer_pieces: BitSet = BitSet()
   //val peer_pieces:BitSet = BitSet((0 to metainfo.pieces.length-1):_*)   // this is just for testing purposes
   val num_total_pieces:Int = metainfo.total_pieces
   var connection:ActorRef = null
@@ -38,7 +38,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
 
   val manager = IO(Tcp)
   IO(Tcp) ! Connect(remote)
-  context.system.scheduler.schedule(1 second,3 second)(takeInitiative)
+  context.system.scheduler.schedule(1 second,8 second)(takeInitiative)
 
   override def receive: Receive = {
     case x @ Connected(remote,local) => {
@@ -50,8 +50,9 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
         case Received(msg:ByteString) => {
           if (!completed_handshake) {
             parseHandshake(msg)
+            //sendBitfield
             sendInterest
-            sendUnchoke
+            //sendUnchoke
           } else if(continue_parsing != null) {
             continue_parsing(msg) match {
               case (index:Int,-1,piece:Array[Byte]) => {
@@ -92,17 +93,22 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       println("PeerCommunicator recieved "+x)
   }
 
+  def sendBitfield: Unit = {
+    connection ! Tcp.Write(ByteString(bitfield))
+    println("Just sent a bitfield")
+  }
+
   def requestPiece: Unit = {
+    if (peer_pieces.isEmpty) {
+      peer_pieces = BitSet((0 to metainfo.total_pieces-1):_*)
+    }
     val choices = peer_pieces & remaining_pieces
-    if (choices.isEmpty) {
-      sendInterest
-    } else {
       val piece_num = choices.head
       val offset = 0
       connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
       acted_recently = true
       println("Just requested piece #"+piece_num+" with offset "+offset)
-    }
+
   }
 
   def requestPiece(piece_num:Int,offset:Int): Unit = {
@@ -136,6 +142,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   }
 
   def sendInterest: Unit = {
+    println("I expressed interest")
     connection ! Tcp.Write(ByteString(interested))
     acted_recently = true
     am_interested = Interested
@@ -147,6 +154,14 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     interestBytes.writeInt(1)
     interestBytes.writeByte(2)
     interestBytes.array
+  }
+
+  def bitfield:Array[Byte] = {
+    val bitfieldBytes = ChannelBuffers.buffer(4+1+num_total_pieces/8)
+    bitfieldBytes.writeInt(1+num_total_pieces/8)
+    bitfieldBytes.writeByte(5)
+    bitfieldBytes.writeBytes((0 to num_total_pieces/8-1).map(_=>0.toByte).toArray)
+    bitfieldBytes.array
   }
 
   def handshake : Array[Byte] = {

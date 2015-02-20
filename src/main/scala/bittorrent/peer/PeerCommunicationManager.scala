@@ -38,6 +38,7 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],peers:List
       println("Manager has "+pieces.keySet.size+" / "+metainfo.pieces.length+" pieces: "+pieces.mkString)
       notifyObservers
       sender ! remaining_pieces
+      teardown
       if (pieces.keySet.size == metainfo.pieces.length) teardown
     }
     case "subscribe" => {
@@ -58,7 +59,9 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],peers:List
   private def teardown: Unit = {
     var complete: Array[Byte] = Array.empty[Byte]
     for (index <- 0 to num_pieces-1) {
-      complete = complete ++ pieces.get(index).get
+      if (pieces.contains(index)) {
+        complete = complete ++ pieces.get(index).get
+      }
     }
     println("Length of final result: "+complete.length)
     val out = new FileOutputStream(("output"))
