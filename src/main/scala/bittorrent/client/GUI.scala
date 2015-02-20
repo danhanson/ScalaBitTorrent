@@ -1,29 +1,47 @@
 package bittorrent.client
 
+import java.awt
 import java.io.File
 
 import akka.actor.{Actor, ActorRef}
+import bittorrent.peer.PeerManagerUpdate
+import bittorrent.tracker.TrackerStatusUpdate
 
+import scala.collection.mutable
+import scala.swing.GridBagPanel.Fill
 import scala.swing._
 import scala.swing.event.ButtonClicked
 
 // the filemanager constructor is so the GUI knows who to send
 // messages to when you select a new file
-class GUI(filemanager:ActorRef) extends SimpleSwingApplication with Actor {
+class GUI(filemanager:ActorRef) extends Actor {
+  val displayed_torrents = new mutable.HashMap[Int,TorrentDisplay]
+  var nextId = 0
+  var table:Table = null
+  var me = self
+  frame.open
 
-  def top = new MainFrame {
-    title = "sBitTorrent"
+  def frame = new Frame {
+    title = "sbittorrent"
     val button = new Button {
       text = "new download"
     }
-    val headers: Seq[String] = Array.tabulate(5) {"Col-"+_}.toSeq
-    val rowData: Array[Array[Any]] = Array.tabulate[Any](10,10) ((_,_) => "")
-    val table = new Table(rowData, headers) {
+    val headers: Seq[String] = Array("Name","Seeders","Leechers","Peers","Blocks")
+    val rowData: Array[Array[Any]] = Array.tabulate[Any](25,5) ((_,_) => "")
+    table = new Table(rowData, headers) {
       selection.elementMode = Table.ElementMode.Cell
     }
-    contents = new BoxPanel(Orientation.Vertical) {
-      contents += button
-      contents += table
+    val tablePane = new ScrollPane(table)
+    contents = new GridBagPanel {
+      val c = new Constraints
+      val shouldFill = true
+      c.fill = Fill.Horizontal
+      c.weightx=0.5
+      c.gridx = 0
+      c.gridy = 0
+      layout(button) = c
+      c.gridy = 1
+      layout(tablePane) = c
       border = Swing.EmptyBorder(30,30,10,30)
     }
     listenTo(button)
@@ -33,7 +51,9 @@ class GUI(filemanager:ActorRef) extends SimpleSwingApplication with Actor {
         fileChooser.showOpenDialog(null)
         val file: File = fileChooser.selectedFile
         if (file != null) {   // closing the filechooser gives a null file
-          filemanager ! file
+          displayed_torrents.put(nextId,new TorrentDisplay(file))
+          filemanager ! (me,nextId,file)
+          nextId += 1
         }
     }
   }
@@ -41,11 +61,44 @@ class GUI(filemanager:ActorRef) extends SimpleSwingApplication with Actor {
   // we will use this to send updates to the GUI
   // to show status of the torrents
   override def receive: Receive = {
-    case "start" => {
-      main(Array.empty[String])
-    }
-    case x => {
+    case update:TrackerStatusUpdate =>
+      displayed_torrents.get(update.id).get.trackerUpdate(update)
+      refresh
+    case update:PeerManagerUpdate =>
+      displayed_torrents.get(update.id).get.peerManagerUpdate(update)
+      refresh
+    case x =>
       println("SimpleSwingApplication received the message: " + x)
+  }
+
+  def refresh: Unit = {
+    for ((row,torrent) <- displayed_torrents) {
+      table.update(row,0,torrent.name)
+      table.update(row,1,torrent.complete)
+      table.update(row,2,torrent.incomplete)
+      table.update(row,3,torrent.peers)
+      table.update(row,4,torrent.status)
     }
+  }
+
+}
+
+class TorrentDisplay(val file:File) {
+  val name: String = file.getName
+  var incomplete: String = "?"
+  var complete:String = "?"
+  var peers:String = "?"
+  var status:String = "?/?"
+
+  def trackerUpdate(update:TrackerStatusUpdate): Unit = {
+    incomplete = update.incomplete.toString
+    peers = update.peers.toString
+    complete = update.complete.toString
+  }
+
+  def peerManagerUpdate(update:PeerManagerUpdate): Unit = {
+    val ours = update.collected_pieces.toString
+    val total = update.total_pieces.toString
+    status = ours+"/"+total
   }
 }

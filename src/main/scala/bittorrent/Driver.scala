@@ -16,8 +16,6 @@ object Driver {
     implicit val system = ActorSystem("bittorrent")
     val client = system.actorOf(Props[FileManager],name="filemanager")
     val gui: ActorRef = system.actorOf(Props(new GUI(client)),name="gui")
-
-    gui ! "start"
   }
 
 }

@@ -21,6 +21,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Success
 
+class TrackerStatusUpdate(val id:Int,val incomplete:Int,val complete:Int,val peers:Int)
 
 /*  Responsible for communication with the tracker initially and then at regular
  *  intervals. It maintains peer_list which contains all of the peers from the
@@ -72,17 +73,17 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 				incomplete = parsed.value.get("incomplete").get.asInstanceOf[IntNode].value
 				val peer_list_buffer: ListBuffer[(InetAddress, Short)] = new ListBuffer[(InetAddress,Short)]
 				parsed.value.get("peers").get match {
-					case peers:ListNode => {
+					case peers: ListNode => {
 						// list of dictionaries, could be empty
 						for (dict: BNode <- peers.value) {
 							val peerMap = dict.asInstanceOf[DictNode].value
 							val port = peerMap.get("port").get.asInstanceOf[IntNode].value
 							val ipString: String = peerMap.get("ip").get.asInstanceOf[StringNode].value
 							val address = InetAddress.getByName(ipString)
-							peer_list_buffer += ((address,port.toShort))
+							peer_list_buffer += ((address, port.toShort))
 						}
 					}
-					case peers:StringNode => {
+					case peers: StringNode => {
 						// 6 bytes per peer => 4 bytes IP | 2 bytes port
 						val byteArray = peers.value.getBytes("ISO-8859-1")
 						for (i <- 0 to byteArray.length / 6 - 1) {
@@ -90,14 +91,13 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 							val portBytes = byteArray.slice(6 * i + 4, 6 * i + 6)
 							val address: InetAddress = InetAddress.getByAddress(ipBytes)
 							val port: Short = ByteBuffer.wrap(portBytes).getShort
-							if (port > 0) peer_list_buffer += ((address,port))
+							if (port > 0) peer_list_buffer += ((address, port))
 						}
 					}
 				}
-				println("Peers are: " + peer_list_buffer.toList)
 				peer_list = peer_list_buffer.toList
+				notifyObservers
 				if (peer_manager==null) startPeerCommunication
-				notifyWithPeerlist()
 			}
 			case x => {
 				println("Tracker communication failed: "+x)
@@ -110,10 +110,12 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 		peer_manager = context.actorOf(Props(
 			new PeerCommunicationManager(metainfo,peer_id.getBytes,peer_list,id)),
 			name="peerCommunicationManager"+id)
+		listeners.foreach(x => x ! peer_manager)
 	}
 
-	private def notifyWithPeerlist(): Unit = {
-		listeners.foreach(x => x ! ("start",metainfo,peer_list))
+	private def notifyObservers: Unit = {
+		var update = new TrackerStatusUpdate(id,incomplete,complete,peer_list.length)
+		listeners.foreach(x => x ! update)
 	}
 
 
@@ -135,7 +137,7 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 			contactTracker
 		}
 		case "subscribe" => {
-			listeners += (sender)
+			listeners += sender
 		}
 		case x => {
 			println("Client received unknown message:")

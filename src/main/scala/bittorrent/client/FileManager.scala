@@ -5,29 +5,38 @@ import java.net.InetAddress
 
 import akka.actor.{Actor, ActorRef, Props}
 import bittorrent.metainfo.{Metainfo, HTTPOnlyMetainfo}
-import bittorrent.tracker.TrackerCommunicator
+import bittorrent.peer.PeerManagerUpdate
+import bittorrent.tracker.{TrackerStatusUpdate, TrackerCommunicator}
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 import scala.io.Codec.ISO8859
 import scala.io.Source
 
 class FileManager extends Actor {
-  var trackerCounter = 0
-  val gui:ActorRef = null
-  val trackerCommunicators = new ListBuffer[ActorRef]
+  var gui:ActorRef = null
+  val trackerCommunicators = new mutable.HashMap[ActorRef,Int]
+  val peerManagers = new mutable.HashMap[ActorRef,Int]
+
   override def receive: Receive = {
-    case file:File => {
+    // sender does not work here because it is sent from an AWT component
+    case (ref:ActorRef,id:Int,file:File) => {
+      gui = ref
       val src = Source.fromFile(file)(ISO8859)
       val metainfo = new HTTPOnlyMetainfo(src)
-      var tracker: ActorRef = context.actorOf(Props(
-        new TrackerCommunicator(metainfo,trackerCounter)),
-        name="trackercommunicator"+trackerCounter)
-      //tracker ! "subscribe"
-      trackerCounter += 1
-      trackerCommunicators += tracker
+      val tracker: ActorRef = context.actorOf(Props(
+        new TrackerCommunicator(metainfo, id)),
+        name = "trackercommunicator" + id)
+      tracker ! "subscribe"
+      trackerCommunicators.put(tracker,id)
     }
-    case ("start",metainfo:Metainfo,peers:List[(InetAddress, Int)]) => {
-      println("Time to start up")
+    case update:TrackerStatusUpdate =>
+      gui ! update
+    case update:PeerManagerUpdate =>
+      gui ! update
+    case peerManager:ActorRef => {
+      val id = trackerCommunicators.get(sender).get
+      peerManagers.put(peerManager,id)
+      peerManager ! "subscribe"
     }
     case x => {
       println("FileManager received an unknown message: "+x)

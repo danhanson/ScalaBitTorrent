@@ -26,7 +26,7 @@ object Decode extends (String => List[BNode]) {
     else if (input.head.equals('d'))
       readDict(input.tail)
     else
-      throw new Exception("Well shit")
+      throw new Exception("Unable to decode a bencoded message")
   }
 
   def readString(input: String): (StringNode,String) = {

@@ -18,8 +18,8 @@ class PieceBuilder(val first_message:ByteString) extends (ByteString => (Int,Arr
 
   override def apply(block: ByteString): (Int,Array[Byte]) = {
     piece ++= block
-    println("Status (piece "+index+"): "+piece.length+" / "+(lengthPrefix-9)+" bytes")
-    if (piece.length+9 == lengthPrefix) (index,piece.toArray)
+    //println("Status (piece "+index+"): "+piece.length+" / "+(lengthPrefix-9)+" bytes")
+    if (piece.length+9 >= lengthPrefix) (index,piece.take(lengthPrefix-9).toArray)
     else null
   }
 }
