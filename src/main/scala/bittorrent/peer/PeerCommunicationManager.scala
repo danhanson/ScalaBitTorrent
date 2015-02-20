@@ -1,6 +1,6 @@
 package bittorrent.peer
 
-import java.io.FileOutputStream
+import java.io.{File, FileOutputStream}
 import java.net.InetAddress
 
 import akka.actor.{ActorRef, Actor, Props}
@@ -19,7 +19,7 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],peers:List
   val num_pieces = metainfo.pieces.length
   val remaining_pieces:BitSet = BitSet((0 to num_pieces-1):_*)
   val pieces = new mutable.HashMap[Int,Array[Byte]]
-
+  var saveFile:File = null
 
   // the `take(1)` on the following line should be removed once we get everything working
   for ((ip,port) <- peers) {
@@ -44,6 +44,9 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],peers:List
     case "subscribe" => {
       listeners += sender
       notifyObservers
+    }
+    case (file:File) => {
+      saveFile = file
     }
     case x => {
       println("PeerCommunicationManager received "+x)
