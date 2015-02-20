@@ -47,13 +47,19 @@ class GUI(filemanager:ActorRef) extends Actor {
     listenTo(button)
     reactions += {
       case ButtonClicked(b) =>
-        val fileChooser = new FileChooser(new File("input"))
-        fileChooser.showOpenDialog(null)
-        val file: File = fileChooser.selectedFile
-        if (file != null) {   // closing the filechooser gives a null file
-          displayed_torrents.put(nextId,new TorrentDisplay(file))
-          filemanager ! (me,nextId,file)
-          nextId += 1
+        val fileChooserOpen = new FileChooser(new File("input"))
+        fileChooserOpen.showOpenDialog(null)
+        val openFile: File = fileChooserOpen.selectedFile
+        if(openFile != null) {
+          val fileChooserSave = new FileChooser(new File("output"))
+          fileChooserSave.showSaveDialog(null)
+          val saveFile: File = fileChooserSave.selectedFile
+          if (saveFile != null) {
+            // closing the filechooser gives a null file
+            displayed_torrents.put(nextId, new TorrentDisplay(openFile))
+            filemanager ! (me, nextId, openFile, saveFile)
+            nextId += 1
+          }
         }
     }
   }

@@ -14,14 +14,16 @@ import scala.io.Source
 
 class FileManager extends Actor {
   var gui:ActorRef = null
+  val saveFiles = new mutable.HashMap[Int, File]
   val trackerCommunicators = new mutable.HashMap[ActorRef,Int]
   val peerManagers = new mutable.HashMap[ActorRef,Int]
 
   override def receive: Receive = {
     // sender does not work here because it is sent from an AWT component
-    case (ref:ActorRef,id:Int,file:File) => {
+    case (ref:ActorRef,id:Int, openFile:File, saveFile:File) => {
       gui = ref
-      val src = Source.fromFile(file)(ISO8859)
+      saveFiles.put(id, saveFile)
+      val src = Source.fromFile(openFile)(ISO8859)
       val metainfo = new HTTPOnlyMetainfo(src)
       val tracker: ActorRef = context.actorOf(Props(
         new TrackerCommunicator(metainfo, id)),
@@ -37,6 +39,7 @@ class FileManager extends Actor {
       val id = trackerCommunicators.get(sender).get
       peerManagers.put(peerManager,id)
       peerManager ! "subscribe"
+      peerManager ! saveFiles.get(id).get
     }
     case x => {
       println("FileManager received an unknown message: "+x)
