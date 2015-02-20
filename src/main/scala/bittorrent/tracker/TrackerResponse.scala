@@ -29,7 +29,7 @@ class TrackerResponse(res: HttpResponse) {
 
 	private val trackerIdOpt: Option[String] = get[String](dict,"tracker id")
 
-	private def peers(implicit torrent: Torrent) = {
+	def peers(implicit torrent: Torrent) = {
 		dict.get("peers").map {
 			x => x match {
 				case l: ListNode => Peer.fromList(l.value.asInstanceOf[List[DictNode]])

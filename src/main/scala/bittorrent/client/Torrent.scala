@@ -1,6 +1,7 @@
 package bittorrent.client
 
 import akka.actor.Actor
+import akka.actor.ActorSystem
 import akka.actor.ActorRef
 import akka.actor.Props
 
@@ -33,13 +34,15 @@ class Torrent(val metafile: Metainfo)(implicit client: Client) {
 	import scala.concurrent.ExecutionContext.Implicits.global
 	import Client._
 
+	def getSystem: ActorSystem = system
+
 	private implicit val timeout: Timeout = Timeout(2000)
 	private implicit val handler = this;
 	private implicit val download = new Download(metafile)
 
 	private val peers: Map[ByteString,Peer] = new HashMap
-	private val leechers : Map[ByteString,ActorRef] = new HashMap
-	private val seeders : Map[ByteString,ActorRef] = new HashMap
+	private val leecherManagers : Map[ByteString,ActorRef] = new HashMap
+	private val seederManagers : Map[ByteString,ActorRef] = new HashMap
 	
 	def port: Int = client.port
 	def peerID : String = client.peerID
@@ -50,7 +53,7 @@ class Torrent(val metafile: Metainfo)(implicit client: Client) {
 
 	def state : Event = Started
 	def compact : Int = 1
-	val tracker: ActorRef = system.actorOf(Props(new Tracker(metafile.announce)),"tracker_"+metafile.announce.replace('/','-'))
+	val tracker: ActorRef = system.actorOf(Props(new Tracker(metafile.announce)),"tracker_ref_"+metafile.announce.replace('/','-'))
 	
 	private def sendRequest(): Unit = {
 		val res = (tracker ? new TrackerRequest(metafile)).mapTo[TrackerResponse]
@@ -72,6 +75,7 @@ class Torrent(val metafile: Metainfo)(implicit client: Client) {
 		print(TrackerResponse.toString())
 		val interval = Math.max(response.minInterval,response.interval)
 		println(interval.toString)
+		println(response.peers.mkString)
 		system.scheduler.scheduleOnce(Duration.create(interval,TimeUnit.SECONDS))(sendRequest)
 	}
 
@@ -80,20 +84,20 @@ class Torrent(val metafile: Metainfo)(implicit client: Client) {
 	}
 
 	def addLeecher(peerId: ByteString, ref: ActorRef){
-		leechers.synchronized {
-			if(leechers.contains(peerId)){
+		leecherManagers.synchronized {
+			if(leecherManagers.contains(peerId)){
 				return
 			}
-			leechers.put(peerId,system.actorOf(Props(new LeecherManager(ref))))
+			leecherManagers.put(peerId,system.actorOf(Props(new LeecherManager(ref))))
 		}
 	}
 
 	def addSeeder(peerId: ByteString, ref: ActorRef){
-		seeders.synchronized {
-			if(seeders.contains(peerId)){
+		seederManagers.synchronized {
+			if(seederManagers.contains(peerId)){
 				return
 			}
-			seeders.put(peerId,system.actorOf(Props(new SeederManager(ref))))
+			seederManagers.put(peerId,system.actorOf(Props(new SeederManager(ref))))
 		}
 	}
 }
