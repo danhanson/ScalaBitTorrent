@@ -2,12 +2,11 @@ package bittorrent.client
 
 import java.io.File
 import java.net.InetAddress
-
 import akka.actor.{Actor, ActorRef, Props}
-import bittorrent.metainfo.{Metainfo, HTTPOnlyMetainfo}
+import bittorrent.data.{Metainfo}
+import bittorrent.data.HTTPOnlyMetainfo
 import bittorrent.peer.PeerManagerUpdate
 import bittorrent.tracker.{TrackerStatusUpdate, TrackerCommunicator}
-
 import scala.collection.mutable
 import scala.io.Codec.ISO8859
 import scala.io.Source

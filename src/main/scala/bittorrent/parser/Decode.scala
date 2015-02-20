@@ -63,7 +63,7 @@ object Decode extends (String => List[BNode]) {
       result.put(output1._1.asInstanceOf[StringNode].value,output2._1)
       remaining = output2._2
     }
-    (new DictNode(result,'d'+input.substring(0,input.length-remaining.length)+'e'), remaining.tail)
+    (new DictNode(result.toMap,'d'+input.substring(0,input.length-remaining.length)+'e'), remaining.tail)
   }
 
   def asDictionary(v1: String): Map[String,BNode] = {

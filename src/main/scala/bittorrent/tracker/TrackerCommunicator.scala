@@ -8,7 +8,7 @@ import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Props}
-import bittorrent.metainfo.{URLUtil, Metainfo}
+import bittorrent.data.{URLUtil, Metainfo}
 import bittorrent.parser._
 import bittorrent.peer.PeerCommunicationManager
 import spray.client.pipelining._
@@ -35,7 +35,7 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 	val port: Int = 6881
 	var uploaded: Int = 0
 	var downloaded: Int = 0
-	var left: Int = metainfo.fileLengths.values.sum
+	var left: Long = metainfo.totalLength
 	val compact: Int = 1
 	val no_peer_id: Int = 0
 	val encodedInfoHash: String = URLUtil.toURLString(metainfo.infohash)

@@ -1,4 +1,4 @@
-package bittorrent.metainfo
+package bittorrent.data
 
 import scala.io.Source
 

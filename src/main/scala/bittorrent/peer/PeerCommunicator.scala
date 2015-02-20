@@ -7,7 +7,7 @@ import akka.actor.{Kill, ActorRef, Actor}
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
-import bittorrent.metainfo.Metainfo
+import bittorrent.data.Metainfo
 import org.jboss.netty.buffer.{ChannelBuffer, ChannelBuffers}
 
 import scala.collection.mutable.{ListBuffer, BitSet}

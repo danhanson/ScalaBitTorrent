@@ -6,7 +6,7 @@ import java.security.SecureRandom
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import bittorrent.client.{FileManager, GUI}
-import bittorrent.metainfo.{URLUtil, Metainfo}
+import bittorrent.data.{URLUtil, Metainfo}
 import bittorrent.parser.Decode
 import org.apache.commons.io.IOUtils
 

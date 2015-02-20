@@ -4,7 +4,7 @@ import java.io.{File, FileOutputStream}
 import java.net.InetAddress
 
 import akka.actor.{ActorRef, Actor, Props}
-import bittorrent.metainfo.Metainfo
+import bittorrent.data.Metainfo
 
 import scala.collection.mutable
 import scala.collection.mutable.{BitSet, ListBuffer}
