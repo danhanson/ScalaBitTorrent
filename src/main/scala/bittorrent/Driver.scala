@@ -13,7 +13,7 @@ import org.apache.commons.io.IOUtils
 
 object Driver {
   def main(args: Array[String]): Unit = {
-    implicit val system = ActorSystem("sbittorrent")
+    implicit val system = ActorSystem("bittorrent")
     val client = system.actorOf(Props[FileManager],name="filemanager")
     val gui: ActorRef = system.actorOf(Props(new GUI(client)),name="gui")
 

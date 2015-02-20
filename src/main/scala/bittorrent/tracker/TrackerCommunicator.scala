@@ -108,7 +108,7 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 	private def startPeerCommunication: Unit = {
 		println(peer_list)
 		peer_manager = context.actorOf(Props(
-			new PeerCommunicationManager(metainfo,peer_id,peer_list,id)),
+			new PeerCommunicationManager(metainfo,peer_id.getBytes,peer_list,id)),
 			name="peerCommunicationManager"+id)
 	}
 

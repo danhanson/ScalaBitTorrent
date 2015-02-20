@@ -2,65 +2,122 @@ package bittorrent.peer
 
 import java.net.{InetAddress, InetSocketAddress}
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import bittorrent.metainfo.Metainfo
 import org.jboss.netty.buffer.{ChannelBuffer, ChannelBuffers}
 
+import scala.collection.mutable.{ListBuffer, BitSet}
+import scala.collection.immutable.IndexedSeq
 
-class PeerCommunicator(metainfo:Metainfo,peer_id:String,address:InetAddress,port:Short,id:Int) extends Actor {
+
+class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddress,port:Short,id:Int) extends Actor {
   import context.system
   import bittorrent.peer.Choke._
   import bittorrent.peer.Interest._
-  println("A PeerCommunicator was just created")
+  val protocol:String = "BitTorrent protocol"
+  val block_size:Int = 16384  // 2^14
   var am_choking:Choke = Choke.Choking
   var peer_choking:Choke = Choking
   var am_interested:Interest = NotInterested
   var peer_interested:Interest = NotInterested
   var remote = new InetSocketAddress(address,port)
+  var his_peer_id:Array[Byte] = null
+  var completed_handshake:Boolean = false
+  val my_pieces:BitSet = BitSet()
+  //val peer_pieces:BitSet = BitSet()
+  val peer_pieces:BitSet = BitSet((0 to metainfo.pieces.length-1):_*)   // this is just for testing purposes
+  val num_total_pieces:Int = metainfo.pieces.length
+  var connection:ActorRef = null
+  var watchers:ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
+  var continue_parsing:ByteString=>(Int,Array[Byte]) = null
+  println("There are "+num_total_pieces+" total pieces")
 
   val manager = IO(Tcp)
   IO(Tcp) ! Connect(remote)
 
   override def receive: Receive = {
-    case CommandFailed(x: Connect) => {
-      println("Got this one3345")
-      println(x)
-    }
     case x @ Connected(remote,local) => {
-      println("WTF is this syntax")
-      println(x)
-      println(x.getClass)
-      println("Message from: "+sender)
-      val connection = sender()
+      connection = sender
       connection ! Register(self)
       connection ! Tcp.Write(ByteString(handshake))
       context become {
         case Received(msg:ByteString) => {
-          println("I GOT A MESSAGE FROM A PEER")
-          println(msg)
+          if (!completed_handshake) {
+            parseHandshake(msg)
+            expressInterest
+          } else if(continue_parsing != null) {
+            continue_parsing(msg) match {
+              case (index:Int,piece:Array[Byte]) => {
+                println("Completed piece: "+piece)
+                watchers.foreach(w=>w!("complete",index,piece))
+                my_pieces += index
+                requestPiece
+              }
+              case null => { }
+            }
+          } else {
+            parseMessage(msg)
+          }
         }
         case PeerClosed => {
-          println("Got a PeerClosed, not sure what to do though")
+          println(PeerClosed)
           context stop self
         }
         case x => {
-          println("Im not really sure what this could be")
           println(x)
-          println(x.getClass)
-
         }
       }
+    }
+    case "subscribe" => {
+      watchers += sender
     }
     case x => {
       println("PeerCommunicator recieved "+x)
     }
   }
 
+  def requestPiece: Unit = {
+    println(peer_pieces)
+    println(my_pieces)
+    println(peer_pieces &~ my_pieces)
+    val piece_num = (peer_pieces &~ my_pieces).head
+    val offset = 0
+    println("OK! Time to request a block")
+    println("Piece Length = "+metainfo.pieceLength)
+    println("Block size: "+block_size)
+    connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
+    println("Just requested piece #"+piece_num+" with offset "+offset)
+  }
+
+  def requestBlock(piece_num:Int,offset:Int): Array[Byte] = {
+    val requestBytes:ChannelBuffer = ChannelBuffers.buffer(17)
+    requestBytes.writeInt(13)         // 4 bytes
+    requestBytes.writeByte(6)         // 1 byte
+    requestBytes.writeInt(piece_num)  // 4 bytes
+    requestBytes.writeInt(offset)     // 4 bytes
+    requestBytes.writeInt(block_size) // 4 bytes
+    requestBytes.array
+  }
+
+  def expressInterest: Unit = {
+    connection ! Tcp.Write(ByteString(interested))
+    am_interested = Interested
+    println("I am now interested")
+  }
+
+  def interested: Array[Byte] = {
+    // 0-0-0-1-2
+    val interestBytes: ChannelBuffer = ChannelBuffers.buffer(5)
+    interestBytes.writeInt(1)
+    interestBytes.writeByte(2)
+    interestBytes.array
+  }
+
   def handshake : Array[Byte] = {
-    val pstr = "BitTorrent protocol".getBytes
+    val pstr = protocol.getBytes
     val handshakeBytes: ChannelBuffer = ChannelBuffers.buffer(68)
     handshakeBytes.writeByte(19)
     for(i <- 0 until 19)
@@ -70,10 +127,79 @@ class PeerCommunicator(metainfo:Metainfo,peer_id:String,address:InetAddress,port
     for(i <- 0 until 20)
       handshakeBytes.writeByte(metainfo.infohash(i))
     for(i <- 0 until 20)
-      handshakeBytes.writeByte(peer_id.getBytes()(i))
-    println("The handshake is: "+handshakeBytes.array.mkString(", "))
+      handshakeBytes.writeByte(my_peer_id(i))
     handshakeBytes.array
   }
+
+  def parseHandshake(bytes:ByteString): Unit = {
+    val pstrlen:Byte = bytes.head
+    val pstr:String = bytes.tail.take(pstrlen).toString
+    val reserved:ByteString = bytes.drop(pstrlen+1).take(8)
+    val info_hash:ByteString = bytes.drop(pstrlen+9).take(20)
+    val peer_id:ByteString = bytes.drop(pstrlen+29).take(20)
+    his_peer_id = peer_id.toArray
+    completed_handshake = true
+  }
+
+  def parseMessage(bytes:ByteString): Unit = {
+    println("Message: "+bytes.mkString(", "))
+    if (bytes.length == 4) return   // keep-alive
+    val lengthPrefix: Int = bytes.take(4).toByteBuffer.getInt
+    val messageId: Byte = bytes.drop(4).head
+    println("lengthPrefix: "+lengthPrefix)
+    println("messageId: "+messageId)
+    messageId match {
+      case 0 => {   // choke
+        println("I got a choking message")
+        am_choking = Choking
+      }
+      case 1 => {   // unchoke
+        println("I got an unchoking message")
+        am_choking = NotChoking
+        requestPiece
+      }
+      case 2 => {   // interested
+        println("I got an interested message")
+        peer_interested = Interested
+      }
+      case 3 => {   // not interested
+        println("I got a not interested message")
+        peer_interested = NotInterested
+      }
+      case 4 => {   // have
+        println("I got a have message")
+        val piece:Int = bytes.drop(5).take(4).toByteBuffer.getInt
+        println("My peer has piece "+piece)
+        peer_pieces += piece
+        println("All of his pieces are: "+peer_pieces)
+      }
+      case 5 => {   // bitfield
+        println("I got a bitfield message")
+        println("Reading a bitfield")
+        val bitfield:ByteString = bytes.drop(5).take(lengthPrefix-1)
+        println("This many entries in bitfield: "+bitfield.length)
+      }
+      case 6 => {   // request
+        println("I got a request message")
+      }
+      case 7 => {   // piece
+        println("I got a piece message")
+        continue_parsing = new PieceBuilder(bytes)
+      }
+      case 8 => {   // cancel
+        println("I got a cancel message")
+      }
+      case 9 => {   // port
+        println("I got a port message")
+      }
+      case _ => {
+        println("What message is this?")
+        println("messageid = "+messageId)
+        println("lengthprefix = "+lengthPrefix)
+      }
+    }
+  }
+
 }
 
 object Choke extends Enumeration {
