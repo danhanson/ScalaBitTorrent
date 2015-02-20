@@ -2,6 +2,7 @@ package bittorrent.tracker
 
 import spray.http.HttpResponse
 import bittorrent.parser._
+import bittorrent.client.Torrent
 
 import bittorrent.pwp._
 
@@ -28,13 +29,17 @@ class TrackerResponse(res: HttpResponse) {
 
 	private val trackerIdOpt: Option[String] = get[String](dict,"tracker id")
 
-	private val peers = dict.get("peers").map {
-		x => x match {
-			case l: ListNode => Peer.fromList(l.value.asInstanceOf[List[DictNode]])
-			case s: StringNode => Peer.fromCompactString(s.value)
-			case _ => throw new IllegalArgumentException()
+	private def peers(implicit torrent: Torrent) = {
+		dict.get("peers").map {
+			x => x match {
+				case l: ListNode => Peer.fromList(l.value.asInstanceOf[List[DictNode]])
+				case s: StringNode => Peer.fromCompactString(s.value)
+				case _ => throw new IllegalArgumentException()
+			}
 		}
 	}
+
+	override def toString = res.status.toString() + " "+res.protocol+" "+res.entity
 
 	val hasTrackerId : Boolean = trackerIdOpt.isDefined
 	lazy val trackerId : String = trackerIdOpt.get

@@ -15,7 +15,7 @@ import spray.http.HttpRequest
 class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 	import context.dispatcher
 
-	implicit val timeout: Timeout = new Timeout(2000)
+	implicit val timeout: Timeout = new Timeout(100000)
 
 	private var id: Option[String] = None
 
@@ -23,14 +23,17 @@ class Tracker(val uri: Uri)(implicit internet: ActorRef) extends Actor {
 
 	override def receive = {
 		case req: TrackerRequest =>
+			println("request sent to tracker")
+			val torrent = sender
 			val future : Future[HttpResponse] = (internet ? req.toHttpRequest(id)).mapTo[HttpResponse]
 			future.onComplete {
 				x =>
+					println("completed")
 					val res: TrackerResponse = new TrackerResponse(x.get)
 					if(res.hasTrackerId){
 						id = Option(res.trackerId)
 					}
-					sender ! res
+					torrent ! res
 			}
 		case _ => throw new Exception("WHAT THE HELL IS THAT?")
 	}

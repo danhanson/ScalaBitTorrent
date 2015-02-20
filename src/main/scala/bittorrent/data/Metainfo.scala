@@ -6,6 +6,9 @@ import scala.collection.mutable.MutableList
 import scala.collection.mutable
 import scala.io.Source
 import scala.collection.mutable.IndexedSeq
+
+import akka.util.ByteString
+
 import bittorrent.parser._
 
 import akka.util.ByteString
@@ -146,14 +149,14 @@ class Metainfo(source: Source) {
     case _ => { }
   }
   private val bytes = MessageDigest.getInstance("SHA-1").digest(infodic.getBytes("ISO-8859-1"))
-  val infohash = new String(bytes,"ISO-8859-1")
+  val infohash : ByteString = ByteString(bytes)
   val encodedInfohash = URLUtil.toURLString(bytes)
 
   if(nameOpt.isDefined){
   	filesM += new File(nameOpt.get,lengthOpt.get)
   }
 
-  val totalLength: Long = files.foldLeft(0L){
+  val totalLength: Long = filesM.foldLeft(0L){
 	  (len:Long,file:File) => len + file.length
   }
 

@@ -14,7 +14,7 @@ import scala.collection.mutable.{Map,HashMap}
 import spray.can.Http
 import spray.http.HttpResponse
 
-import akka.util.Timeout
+import akka.util.{Timeout,ByteString}
 import akka.actor.{Actor,ActorRef}
 import akka.pattern.ask
 
@@ -29,17 +29,17 @@ import akka.io.IO
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class Torrent(meta: Metainfo)(implicit client: Client) {
+class Torrent(val metafile: Metainfo)(implicit client: Client) {
 	import scala.concurrent.ExecutionContext.Implicits.global
 	import Client._
 
 	private implicit val timeout: Timeout = Timeout(2000)
 	private implicit val handler = this;
-	private implicit val download = new Download(meta)
+	private implicit val download = new Download(metafile)
 
-
-	private val leechers : Map[String,ActorRef] = new HashMap
-	private val seeders : Map[String,ActorRef] = new HashMap
+	private val peers: Map[ByteString,Peer] = new HashMap
+	private val leechers : Map[ByteString,ActorRef] = new HashMap
+	private val seeders : Map[ByteString,ActorRef] = new HashMap
 	
 	def port: Int = client.port
 	def peerID : String = client.peerID
@@ -50,37 +50,50 @@ class Torrent(meta: Metainfo)(implicit client: Client) {
 
 	def state : Event = Started
 	def compact : Int = 1
-	val tracker: ActorRef = system.actorOf(Props(new Tracker(meta.announce)))
+	val tracker: ActorRef = system.actorOf(Props(new Tracker(metafile.announce)),"tracker_"+metafile.announce.replace('/','-'))
 	
-	implicit private def sendRequest(): Unit = {
-		val res = (tracker ? new TrackerRequest(meta)).mapTo[TrackerResponse]
+	private def sendRequest(): Unit = {
+		val res = (tracker ? new TrackerRequest(metafile)).mapTo[TrackerResponse]
 
 		res.onComplete {
-			x => if(x.isSuccess)
+			x => if(x.isSuccess){
 				handleResponse(x.get)
-			else
+			} else
 				handleError(x)
 		}
 	}
+
+	sendRequest()
 
 	private def handleResponse(response: TrackerResponse): Unit = {
 		if(response.hasFailed){
 			throw new Exception("Bad Response: "+response.failureReason)
 		}
+		print(TrackerResponse.toString())
 		val interval = Math.max(response.minInterval,response.interval)
+		println(interval.toString)
 		system.scheduler.scheduleOnce(Duration.create(interval,TimeUnit.SECONDS))(sendRequest)
 	}
 
 	private def handleError(t : Try[TrackerResponse]): Unit = {
-		throw new Exception("THE TORRENT BROKE")
+		throw t.failed.get
 	}
 
-	def addLeecher(peerId: String, ref: ActorRef){
+	def addLeecher(peerId: ByteString, ref: ActorRef){
 		leechers.synchronized {
 			if(leechers.contains(peerId)){
 				return
 			}
-			leechers.put(peerId,ref)
+			leechers.put(peerId,system.actorOf(Props(new LeecherManager(ref))))
+		}
+	}
+
+	def addSeeder(peerId: ByteString, ref: ActorRef){
+		seeders.synchronized {
+			if(seeders.contains(peerId)){
+				return
+			}
+			seeders.put(peerId,system.actorOf(Props(new SeederManager(ref))))
 		}
 	}
 }
