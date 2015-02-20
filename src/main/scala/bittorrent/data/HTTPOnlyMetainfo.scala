@@ -1,4 +1,4 @@
-package sbittorrent
+package bittorrent.data
 
 import scala.io.Source
 

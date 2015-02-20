@@ -61,6 +61,7 @@ class Client(val port: Int = 6881) {
 		val handler = new Torrent(meta)(this)
 		torrents.put(meta.infohash,handler)
 	}
+
 	private def handleHandshake(sender: ActorRef, hs: HandShake): Unit = { 
 		val ih = torrents.get(hs.infohash)
 		if(ih.isDefined){

@@ -100,6 +100,8 @@ class Torrent(val metafile: Metainfo)(implicit client: Client) {
 			seederManagers.put(peerId,system.actorOf(Props(new SeederManager(ref))))
 		}
 	}
+
+	// TODO: add ability to close torrent
 }
 
 trait FileStatus

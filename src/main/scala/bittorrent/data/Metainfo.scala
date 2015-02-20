@@ -3,7 +3,11 @@ package bittorrent.data
 import java.security.MessageDigest
 import java.util.Date
 import scala.collection.mutable.MutableList
+
+import bittorrent.parser._
+
 import scala.collection.mutable
+import scala.collection.mutable.MutableList
 import scala.io.Source
 import scala.collection.mutable.IndexedSeq
 
@@ -20,7 +24,6 @@ object Metainfo {
 class Metainfo(source: Source) {
   import Metainfo._
   import Download._
-
   val bnodes : List[BNode] = Decode(source.mkString)
   var announce : String = null
   var comment : String = null
@@ -64,7 +67,7 @@ class Metainfo(source: Source) {
           case vlist:ListNode => {
             k match {
               case "announce-list" => {
-           		for (e <- vlist.value) {
+                for (e <- vlist.value) {
                   e match {
                     case lnode: ListNode => {
                       lnode.value.head match {
@@ -105,7 +108,13 @@ class Metainfo(source: Source) {
                                   }
                                 }
                               }
+                              case _ => {
+                                println("Something else weird happened. Whatever.")
+                              }
                             }
+                          }
+                          case _ => {
+                            println("something weird happened, carry on")
                           }
                         }
                       }
@@ -165,6 +174,7 @@ class Metainfo(source: Source) {
   val pieces: Seq[Piece] = (0 until pieceHashes.length/20).map {
 	  i => new Piece(i,pieceLength,pieceHashes.slice(20*i,20*(i+1)))(this)
   }
+  val total_pieces = pieces.length
 
   override def toString: String = {
     return "Announcde: "+announce+

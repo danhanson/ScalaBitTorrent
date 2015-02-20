@@ -1,7 +1,7 @@
 package bittorrent.data
 
 object URLUtil {
-  def toURLString(in:Array[Byte]): String = {
+  def toURLString(in:Seq[Byte]): String = {
     var ch: Byte = 0x00
     var i = 0
     if (in == null || in.length <= 0) return null
