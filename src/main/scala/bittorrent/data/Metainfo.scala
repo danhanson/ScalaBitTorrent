@@ -31,6 +31,7 @@ class Metainfo(source: Source) {
   var creationDate : Date = null
   var announceList : MutableList[String] = MutableList.empty[String]
   private var filesM : MutableList[File] = new MutableList
+  var fileLengths : mutable.HashMap[String, Int] = new mutable.HashMap[String, Int]
   var pieceLength : Int = -1
   var privateFlag : Int = -1
   private var pieceHashes : Seq[Byte] = null
@@ -98,6 +99,7 @@ class Metainfo(source: Source) {
                                 ls.value.head match {
                                   case path: StringNode => {
                                     filesM += new File(path.value, len.value)
+                                    fileLengths += ((path.value, len.value))
                                   }
                                 }
                               }
@@ -105,6 +107,7 @@ class Metainfo(source: Source) {
                                 ls.value.head match {
                                   case path: StringNode => {
                                     filesM += new File(path.value, len.value)
+                                    fileLengths += ((path.value, len.value))
                                   }
                                 }
                               }
@@ -129,6 +132,7 @@ class Metainfo(source: Source) {
                         }
                         case "length" => {
                           lengthOpt = Option(iNode.value)
+                          fileLengths += ((null,iNode.value))
                         }
                         case _ => {
                           println(key)

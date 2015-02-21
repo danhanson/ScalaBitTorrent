@@ -1,7 +1,7 @@
 package bittorrent.peer
 
 import akka.util.ByteString
-import bittorrent.metainfo.Metainfo
+import bittorrent.data.Metainfo
 import scala.collection.mutable.{ListBuffer, Buffer}
 
 /**
