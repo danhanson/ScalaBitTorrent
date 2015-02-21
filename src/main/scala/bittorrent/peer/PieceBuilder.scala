@@ -20,14 +20,8 @@ class PieceBuilder(val metainfo: Metainfo,val first_message:ByteString) extends 
   var inside_of_block = true
 
   override def apply(msg: ByteString): (Int, Int, Array[Byte]) = {
-    println("Calling the function")
-    println(inside_of_block)
-    println(remaining_in_block)
-    println(total_piece)
-    println(index)
     if (inside_of_block) {
       current_block ++= msg
-      //println("Status (piece "+index+"): "+piece.length+" / "+(lengthPrefix-9)+" bytes")
       if (current_block.length + 9 == lengthPrefix) {
         total_piece ++= current_block
         //if (total_piece.length == piece_length) {
@@ -40,14 +34,18 @@ class PieceBuilder(val metainfo: Metainfo,val first_message:ByteString) extends 
       }
       return null
     } else {
-      lengthPrefix = msg.take(4).toByteBuffer.getInt
-      messageId = msg.drop(4).head
-      index = msg.drop(5).take(4).asByteBuffer.getInt
-      offset = msg.drop(9).take(4).asByteBuffer.getInt
-      current_block ++= msg.drop(13)
-      remaining_in_block = lengthPrefix - 9 - current_block.length
-      inside_of_block = true
-      return null
+      try {
+        lengthPrefix = msg.take(4).toByteBuffer.getInt
+        messageId = msg.drop(4).head
+        index = msg.drop(5).take(4).asByteBuffer.getInt
+        offset = msg.drop(9).take(4).asByteBuffer.getInt
+        current_block ++= msg.drop(13)
+        remaining_in_block = lengthPrefix - 9 - current_block.length
+        inside_of_block = true
+        return null
+      } catch {
+        case _ => null
+      }
     }
   }
 }

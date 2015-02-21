@@ -1,12 +1,10 @@
 package bittorrent.client
 
 import java.io.File
-import java.net.InetAddress
 import akka.actor.{Actor, ActorRef, Props}
 import bittorrent.data.{Metainfo}
-import bittorrent.data.HTTPOnlyMetainfo
 import bittorrent.peer.PeerManagerUpdate
-import bittorrent.tracker.{TrackerStatusUpdate, TrackerCommunicator}
+import bittorrent.tracker.{HTTPTrackerCommunicator, TrackerStatusUpdate, UDPTrackerCommunicator}
 import scala.collection.mutable
 import scala.io.Codec.ISO8859
 import scala.io.Source
@@ -23,10 +21,12 @@ class FileManager extends Actor {
       gui = ref
       saveFiles.put(id, saveFile)
       val src = Source.fromFile(openFile)(ISO8859)
-      val metainfo = new HTTPOnlyMetainfo(src)
-      val tracker: ActorRef = context.actorOf(Props(
-        new TrackerCommunicator(metainfo, id)),
-        name = "trackercommunicator" + id)
+      val metainfo = new Metainfo(src)
+      val tracker: ActorRef = if (metainfo.announce.startsWith("http")) {
+        context.actorOf(Props(new HTTPTrackerCommunicator(metainfo, id)),name="trackercommunicator"+id)
+      } else {
+        context.actorOf(Props(new UDPTrackerCommunicator(metainfo, id)),name="trackercommunicator"+id)
+      }
       tracker ! "subscribe"
       trackerCommunicators.put(tracker,id)
     }

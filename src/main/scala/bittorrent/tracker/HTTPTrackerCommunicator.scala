@@ -30,7 +30,7 @@ class TrackerStatusUpdate(val id:Int,val incomplete:Int,val complete:Int,val pee
  *
  *  As of 2/19/2015 it supports HTTP but not UDP
  */
-class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
+class HTTPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 	var event: String = "started"
 	val port: Int = 6881
 	var uploaded: Int = 0
@@ -106,7 +106,6 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 	}
 
 	private def startPeerCommunication: Unit = {
-		println(peer_list)
 		peer_manager = context.actorOf(Props(
 			new PeerCommunicationManager(metainfo,peer_id.getBytes,peer_list,id)),
 			name="peerCommunicationManager"+id)
@@ -133,16 +132,9 @@ class TrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 	}
 
 	override def receive: Receive = {
-		case "contact" => {
-			contactTracker
-		}
-		case "subscribe" => {
-			listeners += sender
-		}
-		case x => {
-			println("Client received unknown message:")
-			println(x)
-		}
+		case "contact" => contactTracker
+		case "subscribe" => listeners += sender
+		case x => println("Client received unknown message: "+x)
 	}
 
 }
