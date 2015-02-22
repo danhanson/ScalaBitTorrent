@@ -2,6 +2,7 @@ package bittorrent.client
 
 import java.awt
 import java.io.File
+import javax.swing.JFrame
 
 import akka.actor.{Actor, ActorRef}
 import bittorrent.peer.{ActivePeersUpdate, PeerManagerUpdate}
@@ -30,6 +31,7 @@ class GUI(filemanager:ActorRef) extends Actor {
 
   def frame = new Frame {
     title = "sbittorrent"
+    peer.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
     val button = new Button {
       text = "new download"
     }

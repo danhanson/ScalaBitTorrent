@@ -77,7 +77,58 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:In
 				println(uri)
 				println(content)
 				println(parsed)
-				parsed.value.get(parsed.value.keys.filter(x=>x.startsWith("peers")).head).get match {
+        parsed.value.keys.filter(x=>x.startsWith("peers")).head match {
+          case "peers" => {
+            parsed.value.get("peers").get match {
+              case peers: ListNode => {
+                // list of dictionaries, could be empty
+                for (dict: BNode <- peers.value) {
+                  val peerMap = dict.asInstanceOf[DictNode].value
+                  val port = peerMap.get("port").get.asInstanceOf[IntNode].value
+                  val ipString: String = peerMap.get("ip").get.asInstanceOf[StringNode].value
+                  val address = InetAddress.getByName(ipString)
+                  peer_list_buffer += ((address, port.toShort))
+                }
+              }
+              case peers: StringNode => {
+                // 6 bytes per peer => 4 bytes IP | 2 bytes port
+                val byteArray = peers.value.getBytes("ISO-8859-1")
+                for (i <- 0 to byteArray.length / 6 - 1) {
+                  val ipBytes = byteArray.slice(6 * i, 6 * i + 4)
+                  val portBytes = byteArray.slice(6 * i + 4, 6 * i + 6)
+                  val address: InetAddress = InetAddress.getByAddress(ipBytes)
+                  val port: Short = ByteBuffer.wrap(portBytes).getShort
+                  if (port > 0) peer_list_buffer += ((address, port))
+                }
+              }
+            }
+          }
+          case "peers6" => {
+            parsed.value.get("peers6").get match {
+              case peers: ListNode => {
+                // list of dictionaries, could be empty
+                for (dict: BNode <- peers.value) {
+                  val peerMap = dict.asInstanceOf[DictNode].value
+                  val port = peerMap.get("port").get.asInstanceOf[IntNode].value
+                  val ipString: String = peerMap.get("ip").get.asInstanceOf[StringNode].value
+                  val address = InetAddress.getByName(ipString)
+                  peer_list_buffer += ((address, port.toShort))
+                }
+              }
+              case peers: StringNode => {
+                val byteArray = peers.value.getBytes("ISO-8859-1")
+                for (i <- 0 to byteArray.length / 18 - 1) {
+                  val ipBytes = byteArray.slice(18 * i, 18 * i + 16)
+                  val portBytes = byteArray.slice(18 * i + 16, 18 * i + 18)
+                  val address: InetAddress = InetAddress.getByAddress(ipBytes)
+                  val port: Short = ByteBuffer.wrap(portBytes).getShort
+                  if (port > 0) peer_list_buffer += ((address, port))
+                }
+              }
+            }
+          }
+        }
+				/*parsed.value.get(parsed.value.keys.filter(x=>x.startsWith("peers")).head).get match {
 					case peers: ListNode => {
 						// list of dictionaries, could be empty
 						for (dict: BNode <- peers.value) {
@@ -99,7 +150,7 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:In
 							if (port > 0) peer_list_buffer += ((address, port))
 						}
 					}
-				}
+				}*/
 				peer_list = peer_list_buffer.toList
 				notifyObservers
 				startPeerCommunication
