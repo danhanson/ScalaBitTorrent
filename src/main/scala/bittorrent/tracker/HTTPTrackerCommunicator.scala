@@ -30,7 +30,7 @@ class TrackerStatusUpdate(val id:Int,val incomplete:Int,val complete:Int,val pee
  *
  *  As of 2/19/2015 it supports HTTP but not UDP
  */
-class HTTPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
+class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:Int) extends Actor {
 	var event: String = "started"
 	val port: Int = 6881
 	var uploaded: Int = 0
@@ -53,15 +53,16 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 
 
 	private def contactTracker(): Unit = {
-		if (metainfo.announce.startsWith("http")) {
+		if (my_announce.startsWith("http")) {
 			contactHTTPTracker
 		} else {
-			println("Unrecognized protocol: "+metainfo.announce)
+			println("Unrecognized protocol: "+my_announce)
 		}
 	}
 
 	private def contactHTTPTracker(): Unit = {
 		val uri = Uri(createURL, Charset.forName("ISO-8859-1"), ParsingMode.RelaxedWithRawQuery)
+
 		val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
 		pipeline(Get(uri)) onComplete {
 			case Success(response: HttpResponse) => {
@@ -72,6 +73,9 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 				complete = parsed.value.get("complete").get.asInstanceOf[IntNode].value
 				incomplete = parsed.value.get("incomplete").get.asInstanceOf[IntNode].value
 				val peer_list_buffer: ListBuffer[(InetAddress, Short)] = new ListBuffer[(InetAddress,Short)]
+				println(uri)
+				println(content)
+				println(parsed)
 				parsed.value.get("peers").get match {
 					case peers: ListNode => {
 						// list of dictionaries, could be empty
@@ -119,7 +123,7 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 
 
 	private def createURL: String = {
-		return metainfo.announce+
+		return my_announce+
 			"?event="+event+
 			"&info_hash="+encodedInfoHash+
 			"&peer_id="+peer_id+
@@ -128,7 +132,8 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
 			"&downloaded="+downloaded+
 			"&left="+left+
 			"&compact="+compact+
-			"&no_peer_id="+no_peer_id
+			"&no_peer_id="+no_peer_id+
+			"&supportcrypto=0"
 	}
 
 	override def receive: Receive = {

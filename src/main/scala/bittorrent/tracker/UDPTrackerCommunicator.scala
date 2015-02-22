@@ -16,7 +16,7 @@ import spray.http.Uri
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-class UDPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
+class UDPTrackerCommunicator(val metainfo:Metainfo, val my_announce:String, id:Int) extends Actor {
   import context.system
   val rnd = new SecureRandom
   val port:Short = 6881
@@ -35,15 +35,15 @@ class UDPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
   var peer_manager:ActorRef = null
   val listeners = new ListBuffer[ActorRef]
 
-  val remote_host = metainfo.announce.drop(6).split(':')(0)
-  val remote_port:Short = metainfo.announce.drop(6).split(':')(1).split('/')(0).toShort
+  val remote_host = my_announce.drop(6).split(':')(0)
+  val remote_port:Short = my_announce.drop(6).split(':')(1).split('/')(0).toShort
   val remote = new InetSocketAddress(remote_host,remote_port)
-
   val manager = IO(UdpConnected)
   manager ! Connect(self,remote)
 
   def receive:Receive = {
     case Connected => {
+      println("now connected")
       context.become(ready(sender))
       self ! connectBytes
     }
@@ -71,6 +71,7 @@ class UDPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
   }
 
   def parseConnect(bytes:ByteString) {
+    println("UDP Tracker responded to connect")
     val action = bytes.take(4).asByteBuffer.getInt
     val transaction_id = bytes.drop(4).take(4).asByteBuffer.getInt
     connection_id = bytes.drop(8).take(8).asByteBuffer.getLong
@@ -78,6 +79,7 @@ class UDPTrackerCommunicator(val metainfo:Metainfo, id:Int) extends Actor {
   }
 
   def parseAnnounce(bytes:ByteString): Unit = {
+    println("UDP Tracker responded to announce")
     val action = bytes.take(4).asByteBuffer.getInt
     val transaction_id = bytes.drop(4).take(4).asByteBuffer.getInt
     interval = bytes.drop(8).take(4).asByteBuffer.getInt

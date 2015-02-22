@@ -6,6 +6,7 @@ import bittorrent.data.{Metainfo}
 import bittorrent.peer.PeerManagerUpdate
 import bittorrent.tracker.{HTTPTrackerCommunicator, TrackerStatusUpdate, UDPTrackerCommunicator}
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.io.Codec.ISO8859
 import scala.io.Source
 
@@ -22,13 +23,27 @@ class FileManager extends Actor {
       saveFiles.put(id, saveFile)
       val src = Source.fromFile(openFile)(ISO8859)
       val metainfo = new Metainfo(src)
+      var incr = 0
       val tracker: ActorRef = if (metainfo.announce.startsWith("http")) {
-        context.actorOf(Props(new HTTPTrackerCommunicator(metainfo, id)),name="trackercommunicator"+id)
+        context.actorOf(Props(new HTTPTrackerCommunicator(metainfo,metainfo.announce,id+incr)),name="trackercommunicator"+id+incr)
       } else {
-        context.actorOf(Props(new UDPTrackerCommunicator(metainfo, id)),name="trackercommunicator"+id)
+        context.actorOf(Props(new UDPTrackerCommunicator(metainfo,metainfo.announce,id+incr)),name="trackercommunicator"+id+incr)
       }
       tracker ! "subscribe"
       trackerCommunicators.put(tracker,id)
+      /*
+      incr += 1000
+      for (my_announce <- metainfo.announceList.take(1)) {
+        val tracker: ActorRef = if (my_announce.startsWith("http")) {
+          context.actorOf(Props(new HTTPTrackerCommunicator(metainfo,my_announce,id+incr)),name="trackercommunicator"+id+incr)
+        } else {
+          context.actorOf(Props(new UDPTrackerCommunicator(metainfo,my_announce,id+incr)),name="trackercommunicator"+id+incr)
+        }
+        tracker ! "subscribe"
+        trackerCommunicators.put(tracker,id)
+        incr += 1000
+      }
+      */
     }
     case update:TrackerStatusUpdate =>
       gui ! update
