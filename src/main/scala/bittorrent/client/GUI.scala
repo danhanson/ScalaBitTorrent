@@ -61,7 +61,7 @@ class GUI(filemanager:ActorRef) extends Actor {
         val openFile: File = fileChooserOpen.selectedFile
         if(openFile != null) {
           val fileChooserSave = new FileChooser(new File("output"))
-          //fileChooserSave.fileSelectionMode = DirectoriesOnly
+          fileChooserSave.fileSelectionMode = DirectoriesOnly
           fileChooserSave.showSaveDialog(null)
           val saveFile: File = fileChooserSave.selectedFile
           if (saveFile != null) {
@@ -102,7 +102,7 @@ class GUI(filemanager:ActorRef) extends Actor {
         val complete:String = if (torrent.complete == -1) "?" else torrent.complete.toString
         val incomplete:String = if (torrent.incomplete == -1) "?" else torrent.incomplete.toString
         val peers:String = if (torrent.peers == -1) "?" else torrent.active+"/"+torrent.peers
-        val status:String = if (torrent.downloaded_pieces == -1) "?/?" else torrent.downloaded_pieces+"/"+torrent.total_pieces
+        val status:String = if (torrent.downloaded_pieces == -1) "?/?" else Math.min(torrent.downloaded_pieces,torrent.total_pieces)+"/"+torrent.total_pieces
         table.update(row,0,torrent.name)
         table.update(row,1,complete)
         table.update(row,2,incomplete)
@@ -133,7 +133,7 @@ class TorrentDisplay(val file:File) {
   }
 
   def peerManagerUpdate(update:PeerManagerUpdate): Unit = {
-    downloaded_pieces = update.collected_pieces
+    downloaded_pieces = Math.max(downloaded_pieces,update.collected_pieces)
     total_pieces = update.total_pieces
   }
 

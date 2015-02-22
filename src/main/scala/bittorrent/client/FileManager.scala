@@ -35,7 +35,7 @@ class FileManager extends Actor {
       trackerCommunicators.put(tracker,id)
       torrent_trackers += tracker
       incr += 1000
-      for (my_announce <- metainfo.announceList.take(2)) {
+      for (my_announce <- metainfo.announceList) {
         val tracker: ActorRef = if (my_announce.startsWith("http")) {
           context.actorOf(Props(new HTTPTrackerCommunicator(metainfo,my_announce,id+incr)),name="trackercommunicator"+id+incr)
         } else {

@@ -49,6 +49,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       acted_recently = true
       context become {
         case Received(msg:ByteString) => {
+          watchers.foreach(x=>x!"alive")
           if (!completed_handshake) {
             parseHandshake(msg)
             //sendBitfield
@@ -72,7 +73,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
           }
         }
         case PeerClosed => {
-          println(PeerClosed)
+          //println(PeerClosed)
           context stop self
         }
         case update:BitSet =>
@@ -110,14 +111,14 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       val offset = 0
       connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
       acted_recently = true
-      println("Just requested piece #"+piece_num+" with offset "+offset)
+      //println("Just requested piece #"+piece_num+" with offset "+offset)
 
   }
 
   def requestPiece(piece_num:Int,offset:Int): Unit = {
     connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
     acted_recently = true
-    println("Just requested piece #"+piece_num+" with offset "+offset)
+    //println("Just requested piece #"+piece_num+" with offset "+offset)
   }
 
   def requestBlock(piece_num:Int,offset:Int): Array[Byte] = {
@@ -128,13 +129,13 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     requestBytes.writeInt(offset)     // 4 bytes
     if (piece_num*metainfo.pieceLength+offset + block_size > metainfo.fileLength) {
       requestBytes.writeInt(metainfo.fileLength - offset - piece_num*metainfo.pieceLength)
-      println("Length of request was: "+(metainfo.fileLength - offset - piece_num*metainfo.pieceLength))
+      //println("Length of request was: "+(metainfo.fileLength - offset - piece_num*metainfo.pieceLength))
     } else if (offset + block_size > metainfo.pieceLength) {
       requestBytes.writeInt(metainfo.pieceLength - offset)
-      println("Length of request was: "+(metainfo.pieceLength-offset))
+      //println("Length of request was: "+(metainfo.pieceLength-offset))
     } else {
       requestBytes.writeInt(block_size) // 4 bytes
-      println("Length of request was: "+block_size)
+      //println("Length of request was: "+block_size)
     }
     requestBytes.array
   }
