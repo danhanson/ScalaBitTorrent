@@ -12,7 +12,6 @@ import bittorrent.data.Metainfo
 import org.jboss.netty.buffer.{ChannelBuffer, ChannelBuffers}
 
 import scala.collection.mutable.{ListBuffer, BitSet}
-import scala.collection.immutable.IndexedSeq
 import scala.concurrent.duration._
 import scala.util.Random
 
@@ -58,11 +57,9 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
           } else if(continue_parsing != null) {
             continue_parsing(msg) match {
               case (index:Int,-1,piece:Array[Byte]) => {
-                println("Completed piece: "+piece)
                 watchers.foreach(w=>w!("complete",index,piece))
                 remaining_pieces -= index
                 continue_parsing = null
-                println("Remaining pieces: "+remaining_pieces)
                 requestPiece
               }
               case (piece_num:Int,offset:Int,null) => {
@@ -87,7 +84,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       watchers += sender
     case update:BitSet =>
       remaining_pieces = update
-      println("Updating remaining pieces: "+remaining_pieces)
     case CommandFailed => {
       connection ! Tcp.Write(ByteString(handshake))     // probably not what you're supposed to do
     }
@@ -107,7 +103,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     }
     if (peer_pieces.isEmpty) peer_pieces = BitSet((0 to metainfo.total_pieces-1):_*)
     val choices: Array[Int] = (peer_pieces & remaining_pieces).toArray
-    val piece_num:Int = choices.drop(Random.nextInt(choices.size-1)).head
+    val piece_num:Int = choices.drop(Random.nextInt(choices.size)).head
       val offset = 0
       connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
       acted_recently = true
@@ -129,6 +125,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     requestBytes.writeInt(offset)     // 4 bytes
     if (piece_num*metainfo.pieceLength+offset + block_size > metainfo.fileLength) {
       requestBytes.writeInt(metainfo.fileLength - offset - piece_num*metainfo.pieceLength)
+      println("Length of request was: "+(metainfo.fileLength - offset - piece_num*metainfo.pieceLength))
     } else if (offset + block_size > metainfo.pieceLength) {
       requestBytes.writeInt(metainfo.pieceLength - offset)
       println("Length of request was: "+(metainfo.pieceLength-offset))
@@ -199,16 +196,12 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     val peer_id:ByteString = bytes.drop(pstrlen+29).take(20)
     his_peer_id = peer_id.toArray
     completed_handshake = true
-    println("Received a handshake: "+bytes)
   }
 
   def parseMessage(bytes:ByteString): Unit = {
-    println("Message: "+bytes.map(x=>x.toInt).mkString(", "))
     if (bytes.length == 4) return   // keep-alive
     val lengthPrefix: Int = bytes.take(4).toByteBuffer.getInt
     val messageId: Byte = bytes.drop(4).head
-    println("lengthPrefix: "+lengthPrefix)
-    println("messageId: "+messageId)
     messageId match {
       case 0 => {   // choke
         println("I got a choking message")
@@ -234,8 +227,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
         println("All of his pieces are: "+peer_pieces)
       }
       case 5 => {   // bitfield
-        println("I got a bitfield message")
-        println("Reading a bitfield")
         val bitfield:ByteString = bytes.drop(5).take(lengthPrefix-1)
 
         var counter:Int = 0
@@ -245,8 +236,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
             counter += 1
           }
         }
-        println("He has these pieces: "+peer_pieces)
-        println("This many entries in bitfield: "+bitfield.length)
       }
       case 6 => {   // request
         println("I got a request message")
