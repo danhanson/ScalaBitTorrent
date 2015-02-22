@@ -25,7 +25,7 @@ class PieceBuilder(val metainfo: Metainfo,val first_message:ByteString) extends 
       if (current_block.length + 9 == lengthPrefix) {
         total_piece ++= current_block
         //if (total_piece.length == piece_length) {
-        if (total_piece.length == metainfo.pieceLength || (index == metainfo.total_pieces-1 && index*16384+total_piece.length == metainfo.fileLength)) {
+        if (total_piece.length == metainfo.pieceLength || (index == metainfo.total_pieces-1 && index*metainfo.pieceLength+total_piece.length == metainfo.fileLength)) {
           return (index, -1, total_piece.toArray)
         }
         current_block = ListBuffer.empty[Byte]

@@ -56,7 +56,6 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],id:Int) ex
   }
 
   def notifyObservers: Unit = {
-    println("PeerCommunicationManager sent it to "+listeners.size)
     val update = new PeerManagerUpdate(id,pieces.size,num_pieces)
     listeners.foreach(x=>x!update)
   }
@@ -68,7 +67,6 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],id:Int) ex
         complete = complete ++ pieces.get(index).get
       }
     }
-    println("Length of final result: "+complete.length)
     val out = new FileOutputStream(saveFile)
     out.write(complete)
     out.close()

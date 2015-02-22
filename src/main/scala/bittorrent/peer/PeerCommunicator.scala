@@ -75,8 +75,12 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
           println(PeerClosed)
           context stop self
         }
+        case update:BitSet =>
+          remaining_pieces = update
+        case "subscribe" =>
+          watchers += sender
         case x => {
-          println(x)
+          println("Why the fuck am I getting this message: "+x)
         }
       }
     }
@@ -93,7 +97,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
 
   def sendBitfield: Unit = {
     connection ! Tcp.Write(ByteString(bitfield))
-    println("Just sent a bitfield")
   }
 
   def requestPiece: Unit = {
@@ -140,7 +143,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     connection ! Tcp.Write(ByteString(unchoke))
     acted_recently = true
     peer_choking = NotChoking
-    println("Peer is unchoked")
   }
 
   def unchoke:Array[Byte] = {
@@ -151,7 +153,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   }
 
   def sendInterest: Unit = {
-    println("I expressed interest")
     connection ! Tcp.Write(ByteString(interested))
     acted_recently = true
     am_interested = Interested
@@ -204,27 +205,20 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     val messageId: Byte = bytes.drop(4).head
     messageId match {
       case 0 => {   // choke
-        println("I got a choking message")
         am_choking = Choking
       }
       case 1 => {   // unchoke
-        println("I got an unchoking message")
         am_choking = NotChoking
       }
       case 2 => {   // interested
-        println("I got an interested message")
         peer_interested = Interested
       }
       case 3 => {   // not interested
-        println("I got a not interested message")
         peer_interested = NotInterested
       }
       case 4 => {   // have
-        println("I got a have message")
         val piece:Int = bytes.drop(5).take(4).toByteBuffer.getInt
-        println("My peer has piece "+piece)
         peer_pieces += piece
-        println("All of his pieces are: "+peer_pieces)
       }
       case 5 => {   // bitfield
         val bitfield:ByteString = bytes.drop(5).take(lengthPrefix-1)
@@ -241,7 +235,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
         println("I got a request message")
       }
       case 7 => {   // piece
-        println("I got a piece message")
         continue_parsing = new PieceBuilder(metainfo,bytes)
       }
       case 8 => {   // cancel
