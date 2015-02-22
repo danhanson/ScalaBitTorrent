@@ -4,14 +4,18 @@ import java.awt
 import java.io.File
 
 import akka.actor.{Actor, ActorRef}
-import bittorrent.peer.PeerManagerUpdate
+import bittorrent.peer.{ActivePeersUpdate, PeerManagerUpdate}
 import bittorrent.tracker.TrackerStatusUpdate
 
 import scala.collection.mutable
+import scala.swing.FileChooser.SelectionMode
+import scala.swing.FileChooser.SelectionMode._
 import scala.swing.GridBagPanel.Fill
 import scala.swing._
 import scala.swing.event.ButtonClicked
 import scala.collection.parallel.mutable.ParHashMap
+
+class GUIUpdate(var id:Int)
 
 // the filemanager constructor is so the GUI knows who to send
 // messages to when you select a new file
@@ -55,6 +59,7 @@ class GUI(filemanager:ActorRef) extends Actor {
         val openFile: File = fileChooserOpen.selectedFile
         if(openFile != null) {
           val fileChooserSave = new FileChooser(new File("output"))
+          //fileChooserSave.fileSelectionMode = DirectoriesOnly
           fileChooserSave.showSaveDialog(null)
           val saveFile: File = fileChooserSave.selectedFile
           if (saveFile != null) {
@@ -72,14 +77,17 @@ class GUI(filemanager:ActorRef) extends Actor {
   override def receive: Receive = {
     case update:TrackerStatusUpdate =>
       this.synchronized {
-        //displayed_torrents.get(update.id).get.trackerUpdate(update)
         displayed_torrents.get(update.id).foreach(x=>x.trackerUpdate(update))
         refresh
       }
     case update:PeerManagerUpdate =>
       this.synchronized {
-        //displayed_torrents.get(update.id).get.peerManagerUpdate(update)
         displayed_torrents.get(update.id).foreach(x=>x.peerManagerUpdate(update))
+        refresh
+      }
+    case update:ActivePeersUpdate =>
+      this.synchronized {
+        displayed_torrents.get(update.id).foreach(x=>x.activePeersUpdate(update))
         refresh
       }
     case x =>
@@ -89,11 +97,15 @@ class GUI(filemanager:ActorRef) extends Actor {
   def refresh: Unit = {
     table.synchronized {
       for ((row,torrent) <- displayed_torrents) {
+        val complete:String = if (torrent.complete == -1) "?" else torrent.complete.toString
+        val incomplete:String = if (torrent.incomplete == -1) "?" else torrent.incomplete.toString
+        val peers:String = if (torrent.peers == -1) "?" else torrent.active+"/"+torrent.peers
+        val status:String = if (torrent.downloaded_pieces == -1) "?/?" else torrent.downloaded_pieces+"/"+torrent.total_pieces
         table.update(row,0,torrent.name)
-        table.update(row,1,torrent.complete)
-        table.update(row,2,torrent.incomplete)
-        table.update(row,3,torrent.peers)
-        table.update(row,4,torrent.status)
+        table.update(row,1,complete)
+        table.update(row,2,incomplete)
+        table.update(row,3,peers)
+        table.update(row,4,status)
       }
     }
   }
@@ -102,20 +114,28 @@ class GUI(filemanager:ActorRef) extends Actor {
 
 class TorrentDisplay(val file:File) {
   val name: String = file.getName
-  var incomplete: String = "?"
-  var complete:String = "?"
-  var peers:String = "?"
-  var status:String = "?/?"
+  var incomplete:Int = -1
+  var complete:Int = -1
+  var peers:Int = -1
+  var downloaded_pieces = -1
+  var active:Int = 0
+  var total_pieces = -1
 
   def trackerUpdate(update:TrackerStatusUpdate): Unit = {
-    incomplete = update.incomplete.toString
-    peers = update.peers.toString
-    complete = update.complete.toString
+    if (incomplete == -1) incomplete = 0
+    if (complete == -1) complete = 0
+    if (peers == -1) peers = 0
+    incomplete += update.incomplete
+    complete += update.complete
+    peers += update.peers
   }
 
   def peerManagerUpdate(update:PeerManagerUpdate): Unit = {
-    val ours = update.collected_pieces.toString
-    val total = update.total_pieces.toString
-    status = ours+"/"+total
+    downloaded_pieces = update.collected_pieces
+    total_pieces = update.total_pieces
+  }
+
+  def activePeersUpdate(update:ActivePeersUpdate): Unit = {
+    active = update.peers
   }
 }

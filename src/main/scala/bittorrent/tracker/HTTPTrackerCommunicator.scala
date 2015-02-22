@@ -8,6 +8,7 @@ import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Props}
+import bittorrent.client.GUIUpdate
 import bittorrent.data.{URLUtil, Metainfo}
 import bittorrent.parser._
 import bittorrent.peer.PeerCommunicationManager

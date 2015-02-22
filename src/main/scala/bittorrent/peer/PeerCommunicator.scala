@@ -25,7 +25,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   var peer_choking:Choke = Choking
   var am_interested:Interest = NotInterested
   var peer_interested:Interest = NotInterested
-  var remote = new InetSocketAddress(address,port)
+  var remote = new InetSocketAddress(address,port&0xFFFF)
   var his_peer_id:Array[Byte] = null
   var completed_handshake:Boolean = false
   var remaining_pieces:BitSet = BitSet((0 to metainfo.total_pieces-1):_*)

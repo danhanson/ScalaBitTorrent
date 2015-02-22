@@ -3,7 +3,7 @@ package bittorrent.client
 import java.io.File
 import akka.actor.{Actor, ActorRef, Props}
 import bittorrent.data.{Metainfo}
-import bittorrent.peer.PeerManagerUpdate
+import bittorrent.peer.{ActivePeersUpdate, PeerManagerUpdate}
 import bittorrent.tracker.{HTTPTrackerCommunicator, TrackerStatusUpdate, UDPTrackerCommunicator}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -49,19 +49,21 @@ class FileManager extends Actor {
       trackers.put(id,torrent_trackers.toList)
     }
     case update:TrackerStatusUpdate =>
-      val real_id = trackerCommunicators.get(sender).get
-      update.id = real_id
+      trackerCommunicators.get(sender).foreach(x=>update.id=x)
       gui ! update
     case update:PeerManagerUpdate =>
-      val real_id = peerManagers.get(sender).get
-      update.id = real_id
+      peerManagers.get(sender).foreach(x=>update.id=x)
+      gui ! update
+    case update:ActivePeersUpdate =>
+      peerManagers.get(sender).foreach(x=>update.id=x)
       gui ! update
     case peerManager:ActorRef => {
-      val id = trackerCommunicators.get(sender).get
-      peerManagers.put(peerManager,id)
-      peerManager ! "subscribe"
-      peerManager ! saveFiles.get(id).get
-      trackers.get(id).get.foreach(x=>x!peerManager)
+      trackerCommunicators.get(sender).foreach(id => {
+        peerManagers.put(peerManager,id)
+        peerManager ! "subscribe"
+        peerManager ! saveFiles.get(id).get
+        trackers.get(id).foreach(z=>z.foreach(x=>x!peerManager))
+      })
     }
     case x => {
       println("FileManager received an unknown message: "+x)
