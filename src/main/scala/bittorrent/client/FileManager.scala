@@ -11,10 +11,11 @@ import scala.io.Codec.ISO8859
 import scala.io.Source
 
 class FileManager extends Actor {
-  var gui:ActorRef = null
+  @volatile var gui:ActorRef = null
   val saveFiles = new mutable.HashMap[Int, File]
   val trackerCommunicators = new mutable.HashMap[ActorRef,Int]
   val peerManagers = new mutable.HashMap[ActorRef,Int]
+  val trackers = new mutable.HashMap[Int,List[ActorRef]]
 
   override def receive: Receive = {
     // sender does not work here because it is sent from an AWT component
@@ -23,6 +24,7 @@ class FileManager extends Actor {
       saveFiles.put(id, saveFile)
       val src = Source.fromFile(openFile)(ISO8859)
       val metainfo = new Metainfo(src)
+      val torrent_trackers = new ListBuffer[ActorRef]
       var incr = 0
       val tracker: ActorRef = if (metainfo.announce.startsWith("http")) {
         context.actorOf(Props(new HTTPTrackerCommunicator(metainfo,metainfo.announce,id+incr)),name="trackercommunicator"+id+incr)
@@ -31,9 +33,9 @@ class FileManager extends Actor {
       }
       tracker ! "subscribe"
       trackerCommunicators.put(tracker,id)
-      /*
+      torrent_trackers += tracker
       incr += 1000
-      for (my_announce <- metainfo.announceList.take(1)) {
+      for (my_announce <- metainfo.announceList.take(2)) {
         val tracker: ActorRef = if (my_announce.startsWith("http")) {
           context.actorOf(Props(new HTTPTrackerCommunicator(metainfo,my_announce,id+incr)),name="trackercommunicator"+id+incr)
         } else {
@@ -41,19 +43,25 @@ class FileManager extends Actor {
         }
         tracker ! "subscribe"
         trackerCommunicators.put(tracker,id)
+        torrent_trackers += tracker
         incr += 1000
       }
-      */
+      trackers.put(id,torrent_trackers.toList)
     }
     case update:TrackerStatusUpdate =>
+      val real_id = trackerCommunicators.get(sender).get
+      update.id = real_id
       gui ! update
     case update:PeerManagerUpdate =>
+      val real_id = peerManagers.get(sender).get
+      update.id = real_id
       gui ! update
     case peerManager:ActorRef => {
       val id = trackerCommunicators.get(sender).get
       peerManagers.put(peerManager,id)
       peerManager ! "subscribe"
       peerManager ! saveFiles.get(id).get
+      trackers.get(id).get.foreach(x=>x!peerManager)
     }
     case x => {
       println("FileManager received an unknown message: "+x)

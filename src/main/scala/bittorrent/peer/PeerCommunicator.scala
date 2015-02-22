@@ -1,6 +1,7 @@
 package bittorrent.peer
 
 import java.net.{InetAddress, InetSocketAddress}
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import akka.actor.{Kill, ActorRef, Actor}
@@ -13,6 +14,7 @@ import org.jboss.netty.buffer.{ChannelBuffer, ChannelBuffers}
 import scala.collection.mutable.{ListBuffer, BitSet}
 import scala.collection.immutable.IndexedSeq
 import scala.concurrent.duration._
+import scala.util.Random
 
 class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddress,port:Short,id:Int) extends Actor {
   import context.system
@@ -104,8 +106,8 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       return
     }
     if (peer_pieces.isEmpty) peer_pieces = BitSet((0 to metainfo.total_pieces-1):_*)
-    val choices = peer_pieces & remaining_pieces
-      val piece_num = choices.head
+    val choices: Array[Int] = (peer_pieces & remaining_pieces).toArray
+    val piece_num:Int = choices.drop(Random.nextInt(choices.size-1)).head
       val offset = 0
       connection ! Tcp.Write(ByteString(requestBlock(piece_num,offset)))
       acted_recently = true

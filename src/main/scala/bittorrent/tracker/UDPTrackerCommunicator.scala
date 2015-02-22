@@ -48,6 +48,7 @@ class UDPTrackerCommunicator(val metainfo:Metainfo, val my_announce:String, id:I
       self ! connectBytes
     }
     case "subscribe" => listeners += sender
+    case peerManager:ActorRef => peer_manager = peerManager
     case x => println("UDPTrackerCommunicator received unknown: "+x)
   }
 
@@ -92,7 +93,7 @@ class UDPTrackerCommunicator(val metainfo:Metainfo, val my_announce:String, id:I
     }
     announced = true
     notifyObservers
-    if (peer_manager == null) startPeerCommunication
+    startPeerCommunication
   }
 
   def connectBytes:ByteString = {
@@ -133,10 +134,13 @@ class UDPTrackerCommunicator(val metainfo:Metainfo, val my_announce:String, id:I
   }
 
   private def startPeerCommunication: Unit = {
-    peer_manager = context.actorOf(Props(
-      new PeerCommunicationManager(metainfo,peer_id.getBytes,peer_list.toList,id)),
-      name="peerCommunicationManager"+id)
-    listeners.foreach(x => x ! peer_manager)
+    if (peer_manager == null) {
+      peer_manager = context.actorOf(Props(
+        new PeerCommunicationManager(metainfo,peer_id.getBytes,id)),
+        name="peerCommunicationManager"+id)
+      listeners.foreach(x => x ! peer_manager)
+    }
+    peer_manager ! peer_list.toList
   }
 
 }

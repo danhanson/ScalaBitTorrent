@@ -21,7 +21,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Success
 
-class TrackerStatusUpdate(val id:Int,val incomplete:Int,val complete:Int,val peers:Int)
+class TrackerStatusUpdate(var id:Int,val incomplete:Int,val complete:Int,val peers:Int)
 
 /*  Responsible for communication with the tracker initially and then at regular
  *  intervals. It maintains peer_list which contains all of the peers from the
@@ -76,7 +76,7 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:In
 				println(uri)
 				println(content)
 				println(parsed)
-				parsed.value.get("peers").get match {
+				parsed.value.get(parsed.value.keys.filter(x=>x.startsWith("peers")).head).get match {
 					case peers: ListNode => {
 						// list of dictionaries, could be empty
 						for (dict: BNode <- peers.value) {
@@ -101,7 +101,7 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:In
 				}
 				peer_list = peer_list_buffer.toList
 				notifyObservers
-				if (peer_manager==null) startPeerCommunication
+				startPeerCommunication
 			}
 			case x => {
 				println("Tracker communication failed: "+x)
@@ -110,10 +110,13 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:In
 	}
 
 	private def startPeerCommunication: Unit = {
-		peer_manager = context.actorOf(Props(
-			new PeerCommunicationManager(metainfo,peer_id.getBytes,peer_list,id)),
-			name="peerCommunicationManager"+id)
-		listeners.foreach(x => x ! peer_manager)
+		if (peer_manager == null) {
+			peer_manager = context.actorOf(Props(
+				new PeerCommunicationManager(metainfo,peer_id.getBytes,id)),
+				name="peerCommunicationManager"+id)
+			listeners.foreach(x => x ! peer_manager)
+		}
+		peer_manager ! peer_list.toList
 	}
 
 	private def notifyObservers: Unit = {
@@ -139,6 +142,7 @@ class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:In
 	override def receive: Receive = {
 		case "contact" => contactTracker
 		case "subscribe" => listeners += sender
+		case peerManager:ActorRef => peer_manager = peerManager
 		case x => println("Client received unknown message: "+x)
 	}
 

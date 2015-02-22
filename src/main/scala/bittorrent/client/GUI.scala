@@ -11,14 +11,17 @@ import scala.collection.mutable
 import scala.swing.GridBagPanel.Fill
 import scala.swing._
 import scala.swing.event.ButtonClicked
+import scala.collection.parallel.mutable.ParHashMap
 
 // the filemanager constructor is so the GUI knows who to send
 // messages to when you select a new file
 class GUI(filemanager:ActorRef) extends Actor {
-  val displayed_torrents = new mutable.HashMap[Int,TorrentDisplay]
+  val displayed_torrents = new ParHashMap[Int,TorrentDisplay]
   var nextId = 0
-  var table:Table = null
-  var me = self
+  @volatile var table:Table = null
+  @volatile var me = self
+  var opened:Boolean = false
+
   frame.open
 
   def frame = new Frame {
@@ -68,22 +71,30 @@ class GUI(filemanager:ActorRef) extends Actor {
   // to show status of the torrents
   override def receive: Receive = {
     case update:TrackerStatusUpdate =>
-      displayed_torrents.get(update.id).get.trackerUpdate(update)
-      refresh
+      this.synchronized {
+        //displayed_torrents.get(update.id).get.trackerUpdate(update)
+        displayed_torrents.get(update.id).foreach(x=>x.trackerUpdate(update))
+        refresh
+      }
     case update:PeerManagerUpdate =>
-      displayed_torrents.get(update.id).get.peerManagerUpdate(update)
-      refresh
+      this.synchronized {
+        //displayed_torrents.get(update.id).get.peerManagerUpdate(update)
+        displayed_torrents.get(update.id).foreach(x=>x.peerManagerUpdate(update))
+        refresh
+      }
     case x =>
       println("SimpleSwingApplication received the message: " + x)
   }
 
   def refresh: Unit = {
-    for ((row,torrent) <- displayed_torrents) {
-      table.update(row,0,torrent.name)
-      table.update(row,1,torrent.complete)
-      table.update(row,2,torrent.incomplete)
-      table.update(row,3,torrent.peers)
-      table.update(row,4,torrent.status)
+    table.synchronized {
+      for ((row,torrent) <- displayed_torrents) {
+        table.update(row,0,torrent.name)
+        table.update(row,1,torrent.complete)
+        table.update(row,2,torrent.incomplete)
+        table.update(row,3,torrent.peers)
+        table.update(row,4,torrent.status)
+      }
     }
   }
 
