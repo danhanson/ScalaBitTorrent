@@ -24,7 +24,7 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],id:Int) ex
   val remaining_pieces:BitSet = BitSet((0 to num_pieces-1):_*)
   val pieces = new mutable.HashMap[Int,Array[Byte]]
   var saveFile:File = null
-  val recent:ListBuffer[ActorRef] = new ListBuffer[ActorRef]
+  val recent:mutable.Set[ActorRef] = mutable.HashSet.empty[ActorRef]
   var last:List[ActorRef] = List.empty[ActorRef]
   var all_peers:mutable.Set[(InetAddress,Short)] = mutable.Set.empty[(InetAddress,Short)]
   context.system.scheduler.schedule(Duration.create(3,TimeUnit.SECONDS),Duration.create(5,TimeUnit.SECONDS))(updateActive)
@@ -44,15 +44,17 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],id:Int) ex
 
   override def receive: Receive = {
     case ("complete",index:Int,piece:Array[Byte]) => {
-      remaining_pieces -= index
+      remaining_pieces.synchronized {
+        remaining_pieces -= index
+      }
       pieces.put(index,piece)
       println("Manager has "+pieces.keySet.size+" / "+metainfo.pieces.length+" pieces")
       notifyObservers
       peerCommunicators.foreach(x=>x ! remaining_pieces)
-      teardown
+      //teardown
       if (pieces.keySet.size == metainfo.pieces.length) teardown
-      recent += sender
     }
+    case "alive" => recent += sender
     case "subscribe" => {
       listeners += sender
       notifyObservers
@@ -83,10 +85,12 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],id:Int) ex
   }
 
   def updateActive: Unit = {
-    val update = new ActivePeersUpdate(id, recent.size)
-    listeners.foreach(x=>x!update)
-    last = recent.toList
-    recent.clear
+    recent.synchronized {
+      val update = new ActivePeersUpdate(id, recent.size)
+      listeners.foreach(x=>x!update)
+      last = recent.toList
+      recent.clear
+    }
   }
 
   private def teardown: Unit = {
@@ -96,9 +100,16 @@ class PeerCommunicationManager(metainfo: Metainfo,peer_id:Array[Byte],id:Int) ex
         complete = complete ++ pieces.get(index).get
       }
     }
-    val out = new FileOutputStream(saveFile)
-    out.write(complete)
-    out.close()
-    println("Wrote output to: "+saveFile)
+    var offset = 0
+    if (!saveFile.exists) saveFile.mkdir
+    for ((name:String,length:Int) <- metainfo.fileLengths) {
+      if (offset + length <= complete.length) {
+        val out = new File(saveFile,name)
+        val stream = new FileOutputStream(out)
+        stream.write(complete.drop(offset).take(length))
+        stream.close
+      }
+      offset += length
+    }
   }
 }

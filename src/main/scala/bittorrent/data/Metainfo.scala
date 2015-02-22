@@ -31,11 +31,12 @@ class Metainfo(source: Source) {
   var creationDate : Date = null
   var announceList : MutableList[String] = MutableList.empty[String]
   private var filesM : MutableList[File] = new MutableList
-  var fileLengths : mutable.HashMap[String, Int] = new mutable.HashMap[String, Int]
-  var pieceLength : Int = -1
-  var privateFlag : Int = -1
+  var fileLengths:mutable.Map[String, Int] = new mutable.LinkedHashMap[String, Int]
+  var pieceLength:Int = -1
+  var privateFlag:Int = -1
   private var pieceHashes : Seq[Byte] = null
   var infodic : String = null
+  var name:String = null
   private var nameOpt: Option[String] = None
   private var lengthOpt: Option[Long] = None
   
@@ -144,10 +145,12 @@ class Metainfo(source: Source) {
                       key match {
                         case "name" => {
                           nameOpt = Option(s2Node.value)
+                          name = s2Node.value
                         }
                         case "pieces" => {
                           pieceHashes = s2Node.value.getBytes("ISO-8859-1")
                         }
+                        case _ => {}
                       }
                     }
                   }
@@ -165,12 +168,18 @@ class Metainfo(source: Source) {
   val infohash : ByteString = ByteString(bytes)
   val encodedInfohash = URLUtil.toURLString(bytes)
 
+  /*  This throws a no such element exception and it doesn't appear to be used anywhere
   if(nameOpt.isDefined){
   	filesM += new File(nameOpt.get,lengthOpt.get)
   }
+  */
 
   val totalLength: Long = filesM.foldLeft(0L){
 	  (len:Long,file:File) => len + file.length
+  }
+  if (fileLengths.contains(null)) {
+    fileLengths.put(name,fileLengths.get(null).get)
+    fileLengths.remove(null)
   }
 
   val files : Seq[File] = filesM.toList

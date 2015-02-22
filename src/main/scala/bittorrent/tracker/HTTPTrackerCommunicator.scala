@@ -28,8 +28,6 @@ class TrackerStatusUpdate(var id:Int,val incomplete:Int,val complete:Int,val pee
  *  intervals. It maintains peer_list which contains all of the peers from the
  *  tracker. After the initial communication, it spawns an actor to deal with
  *  managing the peer workers that will need to be spawned for the peer list.
- *
- *  As of 2/19/2015 it supports HTTP but not UDP
  */
 class HTTPTrackerCommunicator(val metainfo:Metainfo,val my_announce:String,id:Int) extends Actor {
 	var event: String = "started"
