@@ -125,9 +125,8 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
     requestBytes.writeByte(6)         // 1 byte
     requestBytes.writeInt(piece_num)  // 4 bytes
     requestBytes.writeInt(offset)     // 4 bytes
-    if (piece_num*block_size+offset + block_size > metainfo.fileLength) {
-      requestBytes.writeInt(metainfo.fileLength - offset - piece_num*block_size)
-
+    if (piece_num*metainfo.pieceLength+offset + block_size > metainfo.fileLength) {
+      requestBytes.writeInt(metainfo.fileLength - offset - piece_num*metainfo.pieceLength)
     } else if (offset + block_size > metainfo.pieceLength) {
       requestBytes.writeInt(metainfo.pieceLength - offset)
       println("Length of request was: "+(metainfo.pieceLength-offset))
