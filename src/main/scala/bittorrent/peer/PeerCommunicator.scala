@@ -36,6 +36,7 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
   var watchers:ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
   var continue_parsing:ByteString=>(Int,Int,Array[Byte]) = null
   var acted_recently = false
+  var dht_port:Short = 0
 
   val manager = IO(Tcp)
   IO(Tcp) ! Connect(remote)
@@ -49,7 +50,6 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       acted_recently = true
       context become {
         case Received(msg:ByteString) => {
-          watchers.foreach(x=>x!"alive")
           if (!completed_handshake) {
             parseHandshake(msg)
             //sendBitfield
@@ -59,11 +59,13 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
             continue_parsing(msg) match {
               case (index:Int,-1,piece:Array[Byte]) => {
                 watchers.foreach(w=>w!("complete",index,piece))
+                watchers.foreach(x=>x!"block")
                 remaining_pieces -= index
                 continue_parsing = null
                 requestPiece
               }
               case (piece_num:Int,offset:Int,null) => {
+                watchers.foreach(x=>x!"block")
                 requestPiece(piece_num,offset)
               }
               case null => { }
@@ -76,24 +78,51 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
           //println(PeerClosed)
           context stop self
         }
-        case update:BitSet =>
+        case (index:Int,update:BitSet) => {
           remaining_pieces = update
+          if (index > 0) sendHave(index)
+        }
         case "subscribe" =>
           watchers += sender
+        case (index:Int,begin:Int,block:Array[Byte]) =>
+          sendBlock(index,begin,block)
         case x => {
           println("Why the fuck am I getting this message: "+x)
         }
       }
     }
+    case (index:Int,begin:Int,block:Array[Byte]) =>
+      sendBlock(index,begin,block)
     case "subscribe" =>
       watchers += sender
-    case update:BitSet =>
+    case (index:Int,update:BitSet) => {
       remaining_pieces = update
+      if (index > 0) sendHave(index)
+    }
     case CommandFailed => {
       connection ! Tcp.Write(ByteString(handshake))     // probably not what you're supposed to do
     }
     case x =>
       println("PeerCommunicator recieved "+x)
+  }
+
+
+  def sendBlock(index:Int,begin:Int,block:Array[Byte]) {
+    val blockBytes:ChannelBuffer = ChannelBuffers.buffer(4+9+block.size)
+    blockBytes.writeInt(9+block.size)
+    blockBytes.writeByte(7)
+    blockBytes.writeInt(index)
+    blockBytes.writeInt(begin)
+    blockBytes.writeBytes(block)
+    connection ! Tcp.Write(ByteString(blockBytes.array))
+  }
+
+  def sendHave(index:Int): Unit = {
+    val haveBytes:ChannelBuffer = ChannelBuffers.buffer(4+5)
+    haveBytes.writeInt(5)
+    haveBytes.writeByte(4)
+    haveBytes.writeInt(index)
+    if (connection != null) connection ! Tcp.Write(ByteString(haveBytes.array))
   }
 
   def sendBitfield: Unit = {
@@ -234,6 +263,10 @@ class PeerCommunicator(metainfo:Metainfo,my_peer_id:Array[Byte],address:InetAddr
       }
       case 6 => {   // request
         println("I got a request message")
+        val index = bytes.drop(5).take(4).toByteBuffer.getInt
+        val begin = bytes.drop(9).take(4).toByteBuffer.getInt
+        val length = bytes.drop(13).take(4).toByteBuffer.getInt
+        watchers.foreach(x=>x!("request",index,begin,length))
       }
       case 7 => {   // piece
         continue_parsing = new PieceBuilder(metainfo,bytes)

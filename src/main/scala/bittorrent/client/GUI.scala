@@ -35,8 +35,8 @@ class GUI(filemanager:ActorRef) extends Actor {
     val button = new Button {
       text = "new download"
     }
-    val headers: Seq[String] = Array("Name","Seeders","Leechers","Peers","Pieces")
-    val rowData: Array[Array[Any]] = Array.tabulate[Any](25,5) ((_,_) => "")
+    val headers: Seq[String] = Array("Name","Seeders","Leechers","Peers","Pieces","Speed")
+    val rowData: Array[Array[Any]] = Array.tabulate[Any](25,6) ((_,_) => "")
     table = new Table(rowData, headers) {
       selection.elementMode = Table.ElementMode.Cell
     }
@@ -103,11 +103,15 @@ class GUI(filemanager:ActorRef) extends Actor {
         val incomplete:String = if (torrent.incomplete == -1) "?" else torrent.incomplete.toString
         val peers:String = if (torrent.peers == -1) "?" else torrent.active+"/"+torrent.peers
         val status:String = if (torrent.downloaded_pieces == -1) "?/?" else Math.min(torrent.downloaded_pieces,torrent.total_pieces)+"/"+torrent.total_pieces
+        val speed:String = if (torrent.speed < 1024) torrent.speed+"B/s"
+                           else if (torrent.speed < 1024*1024) (torrent.speed/1024)+"kB/s"
+                           else (torrent.speed/(1024*1024))+"mB/s"
         table.update(row,0,torrent.name)
         table.update(row,1,complete)
         table.update(row,2,incomplete)
         table.update(row,3,peers)
         table.update(row,4,status)
+        table.update(row,5,speed)
       }
     }
   }
@@ -122,6 +126,7 @@ class TorrentDisplay(val file:File) {
   var downloaded_pieces = -1
   var active:Int = 0
   var total_pieces = -1
+  var speed:Float = 0
 
   def trackerUpdate(update:TrackerStatusUpdate): Unit = {
     if (incomplete == -1) incomplete = 0
@@ -139,5 +144,6 @@ class TorrentDisplay(val file:File) {
 
   def activePeersUpdate(update:ActivePeersUpdate): Unit = {
     active = update.peers
+    speed = update.blocks * 16384
   }
 }
